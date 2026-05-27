@@ -1,0 +1,278 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #0f0f1a;
+  color: #e2e2f0;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  font-size: 2rem;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover { opacity: 0.85; }
+
+.btn-secondary {
+  background: #2a2a3d;
+  color: #c4c4d8;
+  border: 1px solid #3a3a55;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background 0.2s;
+}
+.btn-secondary:hover { background: #33334a; }
+
+.btn-edit {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border: 1px solid #2563eb44;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+.btn-edit:hover { background: #1e40af44; }
+
+.btn-delete {
+  background: #3f1d1d;
+  color: #fca5a5;
+  border: 1px solid #ef444444;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+.btn-delete:hover { background: #7f1d1d44; }
+
+/* Card grid */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.empty {
+  text-align: center;
+  color: #6b6b8a;
+  margin-top: 80px;
+  font-size: 18px;
+}
+
+/* Card */
+.card {
+  background: #16162a;
+  border: 1px solid #2a2a45;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px #7c3aed22;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #2a2a45;
+  padding-bottom: 10px;
+}
+
+.card-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+
+.card-cost {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #60a5fa;
+  background: #1e3a5f44;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.card-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.stat {
+  flex: 1;
+  background: #1e1e35;
+  border-radius: 8px;
+  padding: 6px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: #6b6b8a;
+  margin-bottom: 2px;
+}
+
+.stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e2e2f0;
+}
+
+.field {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.field-label {
+  font-weight: 600;
+  color: #a78bfa;
+  margin-right: 4px;
+}
+
+.field-value {
+  color: #c4c4d8;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-back {
+  background: transparent;
+  border: 1px solid #2a2a45;
+  color: #9090b0;
+  padding: 7px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.btn-back:hover {
+  border-color: #7c3aed;
+  color: #c4b5fd;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #00000088;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.modal {
+  background: #16162a;
+  border: 1px solid #2a2a45;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Form */
+.card-form {
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card-form h2 {
+  font-size: 1.3rem;
+  color: #c4b5fd;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+
+.form-field span {
+  font-size: 13px;
+  color: #9090b0;
+  font-weight: 600;
+}
+
+.form-field input,
+.form-field textarea {
+  background: #1e1e35;
+  border: 1px solid #2a2a45;
+  border-radius: 7px;
+  color: #e2e2f0;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: vertical;
+}
+
+.form-field input:focus,
+.form-field textarea:focus {
+  border-color: #7c3aed;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
