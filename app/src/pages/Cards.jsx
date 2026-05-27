@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CardList from '../components/CardList'
 import CardForm from '../components/CardForm'
-import '../App.css'
 
 const INITIAL_CARDS = [
   { id: 1, name: 'Gbzin', cost: 2, attack: 3, defense: 2, life: 4, passive: 'Ganha +1 ATK a cada 2 rodadas vivo (máx +2)', counter: 'Bigs — perde 1 ATK e 1 DEF ao ser colocado após o Bigs', duo: 'Pepao — ganha +1 ATK e +1 DEF', special: 'Mãos de fogo (4 elixir, rodada 2+): escolhe uma carta inimiga, ela perde 1 ATK até o fim da rodada. Se o Gbzin já tiver +1 ATK acumulado pela passiva, o efeito vira -2 ATK' },
