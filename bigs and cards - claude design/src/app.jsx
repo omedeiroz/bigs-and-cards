@@ -18,6 +18,7 @@ const SCREENS = [
   { id: 'match',      label: 'Partida',           variants: ['Clássico', 'Split', 'Compacto'] },
   { id: 'end',        label: 'Fim de partida',    variants: ['Vitória', 'Derrota'] },
   { id: 'profile',    label: 'Perfil / Histórico',variants: ['A', 'B'] },
+  { id: 'minigames',  label: 'Minigames',         variants: ['Teclado Quente', 'Segura o Choro', 'Reação Pura', 'Clique Frenético', 'Blefe', 'Par ou Ímpar', 'Mira Louca', 'Pedra Papel Tesoura'] },
 ];
 
 function getInitialHash() {
