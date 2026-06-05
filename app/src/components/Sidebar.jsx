@@ -1,10 +1,11 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Home, LayoutGrid, Users, Swords, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const ICONS = { Home, LayoutGrid, Users, Swords, User }
 
-const items = [
+const NAV_ITEMS = [
   { id: '/home',       label: 'Início',    icon: 'Home' },
   { id: '/roster',     label: 'Cartas',    icon: 'LayoutGrid' },
   { id: '/friends',    label: 'Amigos',    icon: 'Users' },
@@ -16,6 +17,35 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { user } = useAuth()
+  const [pendingCount, setPendingCount] = useState(0)
+  const [challengeCount, setChallengeCount] = useState(0)
+
+  useEffect(() => {
+    const token = localStorage.getItem('bigs-token')
+    if (!token) return
+    const headers = { Authorization: `Bearer ${token}` }
+
+    function refresh() {
+      fetch('/api/friends/requests', { headers })
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setPendingCount(data.length) })
+        .catch(() => {})
+      fetch('/api/challenges/received', { headers })
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setChallengeCount(data.length) })
+        .catch(() => {})
+    }
+
+    refresh()
+    const interval = setInterval(refresh, 4000)
+    return () => clearInterval(interval)
+  }, [pathname])
+
+  const items = NAV_ITEMS.map(it => {
+    if (it.id === '/friends' && pendingCount > 0) return { ...it, badge: pendingCount }
+    if (it.id === '/challenges' && challengeCount > 0) return { ...it, badge: challengeCount }
+    return it
+  })
 
   return (
     <aside style={{
@@ -72,7 +102,6 @@ export default function Sidebar() {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{user?.username || 'voce'}</div>
-          <div className="mono" style={{ fontSize: 9, letterSpacing: '0.16em', color: 'var(--ink-4)' }}>{user?.email}</div>
         </div>
       </div>
     </aside>

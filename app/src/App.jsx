@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { SocketProvider } from './context/SocketContext'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
 import Roster from './pages/Roster'
@@ -25,6 +26,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <SocketProvider>
         <Routes>
           <Route path="/login"      element={<PublicRoute><Auth /></PublicRoute>} />
           <Route path="/"           element={<Navigate to="/home" replace />} />
@@ -39,6 +41,7 @@ export default function App() {
           <Route path="/cards"      element={<PrivateRoute><Cards /></PrivateRoute>} />
           <Route path="*"           element={<Navigate to="/home" replace />} />
         </Routes>
+        </SocketProvider>
       </BrowserRouter>
     </AuthProvider>
   )

@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
-import { CardTypoBold } from '../components/Card'
+import { CardTypoBold, CardDetailModal } from '../components/Card'
 import { CARDS } from '../data/cards'
 
 export default function Roster() {
   const [filter, setFilter] = useState('todas')
   const [sort, setSort] = useState('custo')
+  const [selected, setSelected] = useState(null)
 
   const filtered = CARDS.filter(c => filter === 'todas' || c.rarity === filter)
   const sorted = [...filtered].sort((a, b) => {
@@ -50,10 +50,12 @@ export default function Roster() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 20, justifyItems: 'center' }}>
           {sorted.map(c => (
-            <CardTypoBold key={c.id} card={c} size="md" />
+            <CardTypoBold key={c.id} card={c} size="md" onClick={() => setSelected(c)} />
           ))}
         </div>
       </div>
+
+      {selected && <CardDetailModal card={selected} onClose={() => setSelected(null)} />}
     </div>
   )
 }

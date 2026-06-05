@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Zap, Sparkles, Shield, Users, X } from 'lucide-react'
 
 export function CostGem({ cost, size = 36 }) {
   return (
@@ -90,11 +91,14 @@ export function CardTypoBold({ card, size = 'md', onClick, focus, faded }) {
           top: '50%', left: '50%',
           transform: 'translate(-50%, -45%)',
         }}>{card.name[0]}</div>
-        <div style={{ position: 'absolute', bottom: 8, right: 8, fontFamily: 'var(--font-mono)', fontSize: 9, color: card.accent, letterSpacing: '0.1em' }}>
+        <img
+          src={`/cards/${card.id}.png`}
+          alt={card.name}
+          onError={e => { e.currentTarget.style.display = 'none' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        <div style={{ position: 'absolute', bottom: 8, right: 8, fontFamily: 'var(--font-mono)', fontSize: 9, color: card.accent, letterSpacing: '0.1em', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
           [{card.code}]
-        </div>
-        <div style={{ position: 'absolute', top: 8, left: 8, fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--ink-4)', letterSpacing: '0.2em' }}>
-          NO PORTRAIT
         </div>
       </div>
 
@@ -218,7 +222,12 @@ export function CardDoubleFaced({ card, size = 'md', onClick, focus, faded, defa
             textShadow: `0 0 80px ${card.accent}`,
             lineHeight: 0.8,
           }}>{card.name[0]}</div>
-          <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.3em', color: 'rgba(255,255,255,0.4)' }}>[ FOTO ]</div>
+          <img
+            src={`/cards/${card.id}.png`}
+            alt={card.name}
+            onError={e => { e.currentTarget.style.display = 'none' }}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+          />
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0,
             padding: '14px 12px',
@@ -234,6 +243,122 @@ export function CardDoubleFaced({ card, size = 'md', onClick, focus, faded, defa
               <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: 'var(--sapphire)' }}>{card.hp}</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ModalSection({ icon: Icon, label, accent, children }) {
+  return (
+    <div style={{ marginTop: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <Icon size={14} color={accent} />
+        <span className="mono" style={{ fontSize: 10, letterSpacing: '0.22em', color: accent, fontWeight: 700 }}>{label}</span>
+        <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg, ${accent}55, transparent)` }} />
+      </div>
+      {children}
+    </div>
+  )
+}
+
+export function CardDetailModal({ card, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  if (!card) return null
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 2000,
+      background: 'rgba(5, 3, 2, 0.82)',
+      backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 40,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} className="panel" style={{
+        width: '100%', maxWidth: 980,
+        padding: 0,
+        background: 'var(--surface)',
+        boxShadow: 'var(--shadow-lg)',
+        display: 'grid', gridTemplateColumns: '320px 1fr',
+        overflow: 'hidden',
+        borderRadius: 'var(--r-lg)',
+      }}>
+        {/* LEFT — card */}
+        <div style={{
+          padding: 32,
+          background: `linear-gradient(180deg, ${card.accent}11 0%, var(--bg-2) 100%)`,
+          borderRight: '1px solid var(--line-2)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <CardTypoBold card={card} size="md" focus />
+          <div style={{ marginTop: 20, display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <span className="pill pill-purple">CUSTO {card.cost}</span>
+            <span className="pill pill-gold">{card.rarity.toUpperCase()}</span>
+          </div>
+        </div>
+
+        {/* RIGHT — info */}
+        <div style={{ padding: 32, overflowY: 'auto', maxHeight: '85vh' }}>
+          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="eyebrow" style={{ color: card.accent }}>[{card.code}] · {card.tagline.toUpperCase()}</div>
+              <h2 className="display" style={{ fontSize: 56, marginTop: 4, lineHeight: 0.95 }}>{card.name}</h2>
+              <p style={{ fontSize: 14, color: 'var(--ink-3)', marginTop: 8, fontStyle: 'italic' }}>"{card.bio}"</p>
+            </div>
+            <button onClick={onClose} className="btn btn-ghost btn-sm" style={{ width: 32, padding: 0, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={14} />
+            </button>
+          </header>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, padding: '16px 0', borderTop: '1px solid var(--line-2)', borderBottom: '1px solid var(--line-2)' }}>
+            {[
+              { l: 'ATAQUE', v: card.atk, c: 'var(--crimson)' },
+              { l: 'DEFESA', v: card.def, c: 'var(--mint)' },
+              { l: 'VIDA',   v: card.hp,  c: 'var(--sapphire)' },
+            ].map(s => (
+              <div key={s.l} style={{ textAlign: 'center' }}>
+                <div className="mono" style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--ink-4)' }}>{s.l}</div>
+                <div className="display" style={{ fontSize: 56, color: s.c, lineHeight: 1, marginTop: 4, textShadow: `0 0 24px ${s.c}55` }}>{s.v}</div>
+              </div>
+            ))}
+          </div>
+
+          <ModalSection icon={Zap} label="PASSIVA" accent="var(--gold)">
+            <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.55 }}>{card.passive}</p>
+          </ModalSection>
+
+          {card.special && (
+            <ModalSection icon={Sparkles} label="ESPECIAL" accent="var(--purple)">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>{card.special.name}</span>
+                <span className="pill pill-purple">{card.special.cost} elixir</span>
+              </div>
+              <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.55 }}>{card.special.desc}</p>
+            </ModalSection>
+          )}
+
+          {card.counter && (
+            <ModalSection icon={Shield} label="COUNTER" accent="var(--crimson)">
+              <p style={{ fontSize: 14, color: 'var(--ink-2)', lineHeight: 1.55 }}>
+                <span style={{ fontWeight: 700, color: 'var(--ink-1)' }}>{card.counter.name}</span> — {card.counter.desc}
+              </p>
+            </ModalSection>
+          )}
+
+          {(card.duo || []).length > 0 && (
+            <ModalSection icon={Users} label="DUOS" accent="var(--mint)">
+              {card.duo.map((d, i) => (
+                <p key={i} style={{ fontSize: 14, color: 'var(--ink-2)', marginTop: i ? 6 : 0, lineHeight: 1.55 }}>
+                  <span style={{ fontWeight: 700, color: 'var(--ink-1)' }}>+ {d.name}</span> — {d.desc}
+                </p>
+              ))}
+            </ModalSection>
+          )}
         </div>
       </div>
     </div>

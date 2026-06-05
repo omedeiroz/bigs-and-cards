@@ -1,7 +1,7 @@
 /* eslint-disable */
 // ============================================================
 // MATCH SCREEN — 3 variantes de layout de tabuleiro
-//   0: Clássico Hearthstone (horizontal, oponente em cima)
+//   0: Clássico Hearthstone (INTERATIVO — hover, jogar, comprar)
 //   1: Split-screen (zonas paralelas lado a lado)
 //   2: Compacto (centrado em foco, hand drawer)
 // ============================================================
@@ -37,7 +37,7 @@ function useMatchState_Game() {
     elixir: 8,
     elixirMax: 10,
     hand: [window.cardById('bigs'), window.cardById('pirula'), window.cardById('ian'), window.cardById('gustavo')],
-    board: [window.cardById('gbzin'), window.cardById('hadez'), window.cardById('eric')],
+    board: [window.cardById('gbzin'), window.cardById('hadez')],
   };
   const log = [
     { kind: 'sys',   text: 'partida iniciada · você joga primeiro' },
@@ -45,8 +45,6 @@ function useMatchState_Game() {
     { kind: 'opp',   text: 'jogou Pepao' },
     { kind: 'me',    text: 'jogou Hadez · mercado +1 ATK' },
     { kind: 'opp',   text: 'jogou Davi · provoca' },
-    { kind: 'me',    text: 'jogou Eric · vira o jogo nas próximas' },
-    { kind: 'opp',   text: 'pepão big head → minigame iniciado' },
     { kind: 'sys',   text: 'sua vez · rodada 4 · 1:24' },
   ];
   return { opponent, me, log };
@@ -84,6 +82,7 @@ function ElixirBar({ elixir, elixirMax, layout = 'horizontal' }) {
           background: on ? 'radial-gradient(circle at 35% 30%, #D7A5FF, var(--purple) 70%)' : 'var(--surface-2)',
           border: `1px solid ${on ? 'var(--purple)' : 'var(--line-2)'}`,
           borderRadius: 2,
+          transition: 'all var(--dur-base) var(--ease-out)',
           boxShadow: on ? '0 0 6px var(--purple-glow), inset 0 -2px 3px rgba(0,0,0,0.4)' : 'none',
         }} />
       ))}
@@ -146,33 +145,245 @@ function GameLog({ log, style }) {
 }
 
 // ============================================================
-// VARIANT 1 — CLASSIC (horizontal, opponent top)
+// Flyer — flying card overlay (position:fixed, animated via WAAPI)
+// Drives every "card going somewhere" animation: play, draw, return.
+// ============================================================
+const FLY_CARD_W = 160;
+function rectToFly(rect) { return { left: rect.left, top: rect.top, width: rect.width }; }
+function deckTargetRect(el, scale = 0.42) {
+  const r = el.getBoundingClientRect();
+  const w = FLY_CARD_W * scale;
+  const h = (FLY_CARD_W * 224 / 160) * scale;
+  return { left: r.left + r.width / 2 - w / 2, top: r.top + r.height / 2 - h / 2, width: w };
+}
+
+function Flyer({ flyer, onDone }) {
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) { onDone(flyer); return; }
+    const startScale = (flyer.from.width || FLY_CARD_W) / FLY_CARD_W;
+    const endScale = (flyer.to.width || FLY_CARD_W) / FLY_CARD_W;
+    const dx = flyer.to.left - flyer.from.left;
+    const dy = flyer.to.top - flyer.from.top;
+    const lift = flyer.lift != null ? flyer.lift : 100;
+    const peak = Math.max(startScale, endScale) * 1.05;
+    const anim = el.animate([
+      { transform: `translate(0px,0px) scale(${startScale}) rotate(${flyer.fromRot || 0}deg)`, opacity: 1, offset: 0 },
+      { transform: `translate(${dx * 0.5}px, ${dy * 0.5 - lift}px) scale(${peak}) rotate(0deg)`, opacity: 1, offset: 0.55 },
+      { transform: `translate(${dx}px, ${dy}px) scale(${endScale}) rotate(0deg)`, opacity: flyer.fadeOut ? 0 : 1, offset: 1 },
+    ], { duration: flyer.dur || 560, easing: 'cubic-bezier(0.22,1,0.36,1)', fill: 'forwards' });
+    anim.onfinish = () => onDone(flyer);
+    return () => { try { anim.cancel(); } catch (e) {} };
+  }, []);
+  return (
+    <div ref={ref} style={{
+      position: 'fixed', left: flyer.from.left, top: flyer.from.top,
+      width: FLY_CARD_W, zIndex: 9999, pointerEvents: 'none', transformOrigin: 'top left',
+      filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.7))',
+    }}>
+      {flyer.content}
+    </div>
+  );
+}
+
+// ============================================================
+// BoardCardSlot — a card sitting on the player's board.
+// Hover lifts + glows; X-corner returns it to the deck.
+// ============================================================
+const BOARD_W = 132;
+const BOARD_H = 185;
+const BOARD_SCALE = BOARD_W / 160;
+function BoardCardSlot({ card, mine, landed, onReturn }) {
+  const [h, setH] = React.useState(false);
+  return (
+    <div
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      style={{ position: 'relative', width: BOARD_W, height: BOARD_H, transition: 'transform 180ms var(--ease-out)', transform: h ? 'translateY(-7px)' : 'none', cursor: mine ? 'default' : 'default' }}
+    >
+      <div style={{ transformOrigin: 'top left', transform: `scale(${BOARD_SCALE})`, filter: mine ? 'none' : 'brightness(0.95)' }}>
+        <window.CardTypoBold card={card} size="sm" focus={h} />
+      </div>
+      {landed && (
+        <div style={{
+          position: 'absolute', inset: -6, borderRadius: 'var(--r-md)',
+          border: '2px solid var(--gold)', boxShadow: '0 0 28px var(--gold-glow)',
+          pointerEvents: 'none', animation: 'bcLand 520ms var(--ease-out) forwards',
+        }} />
+      )}
+      {mine && onReturn && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onReturn(); }}
+          title="Recolher pro deck"
+          style={{
+            position: 'absolute', top: 4, right: 4,
+            width: 22, height: 22, borderRadius: 6,
+            background: 'rgba(10,9,8,0.88)', border: '1px solid var(--line-gold)',
+            color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, lineHeight: 1, opacity: h ? 1 : 0,
+            transition: 'opacity 150ms var(--ease-out)', cursor: 'pointer',
+          }}
+        >↩</button>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// VARIANT 1 — CLASSIC (INTERACTIVE)
 // ============================================================
 function MatchClassic({ goToScreen }) {
-  const { opponent, me, log } = useMatchState_Game();
-  const [selectedHandIdx, setSelectedHandIdx] = useMatchState(null);
+  const G = useMatchState_Game();
+  const [hand, setHand] = useMatchState(G.me.hand);
+  const [myBoard, setMyBoard] = useMatchState(G.me.board);
+  const [oppBoard] = useMatchState(G.opponent.board);
+  const [elixir, setElixir] = useMatchState(G.me.elixir);
+  const [deckCount, setDeckCount] = useMatchState(6);
+  const [graveyard, setGraveyard] = useMatchState(2);
+  const [log, setLog] = useMatchState(G.log);
+  const [hoverIdx, setHoverIdx] = useMatchState(null);
+  const [flyers, setFlyers] = useMatchState([]);
+  const [drawId, setDrawId] = useMatchState(null);
+  const [landedSlot, setLandedSlot] = useMatchState(null);
+  const [round, setRound] = useMatchState(4);
+
+  const handRefs = React.useRef({});
+  const slotRefs = React.useRef({});
+  const deckRef = React.useRef(null);
+  const seq = React.useRef(1000);
+  const pendingDraw = React.useRef(null);
+
+  const drawPool = window.BIGS_DATA.CARDS;
+  const oppTurnLines = ['comprou carta', 'passou o turno', 'jogou Davi · provoca', 'subiu o mercado', 'guardou elixir'];
+  const oppTurn = React.useRef(0);
+
+  const addLog = (kind, text) => setLog(l => [...l.slice(-12), { kind, text }]);
+  const removeFlyer = (f) => setFlyers(fs => fs.filter(x => x.id !== f.id));
+
+  // ---------- PLAY: hand -> first empty board slot ----------
+  function playCard(i) {
+    const card = hand[i];
+    if (!card) return;
+    if (card.cost > elixir) { addLog('sys', `${card.name}: elixir insuficiente`); return; }
+    const slotIdx = myBoard.length;
+    if (slotIdx > 2) { addLog('sys', 'tabuleiro cheio (3/3)'); return; }
+    const handEl = handRefs.current[card.id];
+    const slotEl = slotRefs.current[slotIdx];
+    if (!handEl || !slotEl) return;
+    const from = rectToFly(handEl.getBoundingClientRect());
+    const to = rectToFly(slotEl.getBoundingClientRect());
+    setHoverIdx(null);
+    setHand(h => h.filter((_, idx) => idx !== i));
+    setElixir(e => Math.max(0, e - card.cost));
+    const id = ++seq.current;
+    setFlyers(fs => [...fs, {
+      id, from, to, lift: 140,
+      content: <window.CardTypoBold card={card} size="sm" focus />,
+      kind: 'play', card, slotIdx,
+    }]);
+  }
+
+  // ---------- DRAW: deck -> hand (FLIP: append hidden, then fly) ----------
+  function drawCard() {
+    if (deckCount <= 0) { addLog('sys', 'deck vazio'); return; }
+    if (hand.length >= 7) { addLog('sys', 'mão cheia (7)'); return; }
+    const base = drawPool[Math.floor(Math.random() * drawPool.length)];
+    const inst = { ...base, id: base.id + '_' + (++seq.current) };
+    setDeckCount(d => d - 1);
+    setDrawId(inst.id);
+    setHand(h => [...h, inst]);
+    pendingDraw.current = inst;
+  }
+  React.useLayoutEffect(() => {
+    if (!pendingDraw.current) return;
+    const inst = pendingDraw.current;
+    pendingDraw.current = null;
+    const handEl = handRefs.current[inst.id];
+    const deckEl = deckRef.current;
+    if (!handEl || !deckEl) { setDrawId(null); return; }
+    const to = rectToFly(handEl.getBoundingClientRect());
+    const from = deckTargetRect(deckEl, 0.42);
+    const id = ++seq.current;
+    setFlyers(fs => [...fs, {
+      id, from, to, lift: 70, dur: 480,
+      content: <window.CardTypoBold card={inst} size="sm" />,
+      kind: 'draw', card: inst,
+    }]);
+  });
+
+  // ---------- RETURN: board card -> deck ----------
+  function returnCard(k) {
+    const card = myBoard[k];
+    const slotEl = slotRefs.current[k];
+    const deckEl = deckRef.current;
+    if (!card || !slotEl || !deckEl) return;
+    const from = rectToFly(slotEl.getBoundingClientRect());
+    const to = deckTargetRect(deckEl, 0.42);
+    setMyBoard(b => b.filter((_, idx) => idx !== k));
+    const id = ++seq.current;
+    setFlyers(fs => [...fs, {
+      id, from, to, lift: 110, fadeOut: true,
+      content: <window.CardTypoBold card={card} size="sm" />,
+      kind: 'return', card,
+    }]);
+  }
+
+  function onFlyerDone(f) {
+    if (f.kind === 'play') {
+      setMyBoard(b => [...b, f.card]);
+      setLandedSlot(f.slotIdx);
+      setTimeout(() => setLandedSlot(s => (s === f.slotIdx ? null : s)), 560);
+      addLog('me', `jogou ${f.card.name}`);
+    } else if (f.kind === 'draw') {
+      setDrawId(id => (id === f.card.id ? null : id));
+      addLog('me', `comprou carta`);
+    } else if (f.kind === 'return') {
+      setDeckCount(d => d + 1);
+      addLog('me', `recolheu ${f.card.name} pro deck`);
+    }
+    removeFlyer(f);
+  }
+
+  // ---------- FINISH TURN ----------
+  function finishTurn() {
+    addLog('me', 'finalizou o turno');
+    addLog('opp', oppTurnLines[oppTurn.current % oppTurnLines.length]);
+    oppTurn.current += 1;
+    setRound(r => r + 1);
+    setElixir(G.me.elixirMax);
+    setTimeout(() => drawCard(), 240);
+  }
+
+  const HAND_SPACING = 96;
 
   return (
     <div style={{
       minHeight: '100vh',
       background: `
-        radial-gradient(ellipse 100% 50% at 50% 30%, #2a1b08 0%, var(--bg) 60%),
+        radial-gradient(ellipse 100% 50% at 50% 28%, #2a1b08 0%, var(--bg) 60%),
         linear-gradient(180deg, #1a0d05 0%, #0a0908 50%, #1a0d05 100%)
       `,
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <MatchTopBar goToScreen={goToScreen} />
+      <style>{`
+        @keyframes bcLand { 0% { opacity: 0.95; transform: scale(0.7); } 100% { opacity: 0; transform: scale(1.28); } }
+        .bc-hand-card { transition: transform 220ms var(--ease-out), filter 220ms var(--ease-out); will-change: transform; }
+        .bc-deck { transition: transform 140ms var(--ease-out), box-shadow 140ms var(--ease-out); }
+        .bc-deck:hover { transform: translateY(-4px) scale(1.04); }
+        .bc-deck:active { transform: translateY(-1px) scale(1.0); }
+      `}</style>
 
-      {/* central wood-table feel via subtle vignette */}
-      <div style={{ position: 'absolute', inset: '60px 0 130px', background: 'radial-gradient(ellipse 70% 50% at 50% 50%, rgba(255, 201, 60, 0.04) 0%, transparent 70%)' }} />
+      <MatchTopBar goToScreen={goToScreen} round={round} />
+
+      <div style={{ position: 'absolute', inset: '60px 0 0', background: 'radial-gradient(ellipse 70% 50% at 50% 52%, rgba(255, 201, 60, 0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
       {/* OPPONENT bar */}
       <div style={{ position: 'absolute', top: 60, left: 24, right: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-        <PlayerStrip player={opponent} avatar={window.cardById('pepao')} side="top" />
-        {/* opponent hand back-of-cards */}
-        <div style={{ display: 'flex', gap: -8 }}>
-          {Array.from({ length: opponent.handCount }).map((_, i) => (
+        <PlayerStrip player={G.opponent} avatar={window.cardById('pepao')} side="top" />
+        <div style={{ display: 'flex' }}>
+          {Array.from({ length: G.opponent.handCount }).map((_, i) => (
             <div key={i} style={{
               width: 50, height: 70,
               background: 'linear-gradient(135deg, #2a1b08 0%, #0a0908 100%)',
@@ -190,63 +401,144 @@ function MatchClassic({ goToScreen }) {
       </div>
 
       {/* OPPONENT board */}
-      <div style={{ position: 'absolute', top: 180, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 16, padding: '20px 24px' }}>
-        {opponent.board.map(c => (
-          <div key={c.id} style={{ filter: 'brightness(0.95)' }}>
-            <window.CardTypoBold card={c} size="sm" />
-          </div>
-        ))}
-        {Array.from({ length: 3 - opponent.board.length }).map((_, i) => (
-          <BoardSlot key={'opp-' + i} />
-        ))}
-      </div>
-
-      {/* Center divider · "vs" + log */}
-      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 40, pointerEvents: 'none' }}>
-        <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg, transparent, var(--gold), transparent)', maxWidth: 320 }} />
-        <div style={{ pointerEvents: 'auto' }}>
-          <GameLog log={log} style={{ width: 280 }} />
-        </div>
-        <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg, transparent, var(--gold), transparent)', maxWidth: 320 }} />
-      </div>
-
-      {/* PLAYER board */}
-      <div style={{ position: 'absolute', bottom: 280, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 16, padding: '20px 24px' }}>
-        {me.board.map(c => (
-          <window.CardTypoBold key={c.id} card={c} size="sm" focus />
-        ))}
-        {Array.from({ length: 3 - me.board.length }).map((_, i) => (
-          <BoardSlot key={'me-' + i} active />
-        ))}
-      </div>
-
-      {/* PLAYER bar */}
-      <div style={{ position: 'absolute', bottom: 200, left: 24, right: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24 }}>
-        <PlayerStrip player={me} avatar={window.cardById('bigs')} side="bottom" />
-        <button className="btn btn-primary btn-lg" style={{ height: 56, padding: '0 32px', fontSize: 16, boxShadow: 'var(--shadow-gold)' }}>
-          Finalizar turno →
-        </button>
-      </div>
-
-      {/* PLAYER hand */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '0 24px 20px', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', gap: 0, height: 200, pointerEvents: 'none' }}>
-        {me.hand.map((c, i) => {
-          const offset = i - (me.hand.length - 1) / 2;
-          const sel = selectedHandIdx === i;
-          const canPlay = c.cost <= me.elixir;
+      <div style={{ position: 'absolute', top: 122, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 20, padding: '0 24px', height: BOARD_H }}>
+        {Array.from({ length: 3 }).map((_, k) => {
+          const c = oppBoard[k];
           return (
-            <div key={c.id} style={{
-              transform: `translateX(${offset * 90}px) translateY(${sel ? -50 : Math.abs(offset) * 10}px) rotate(${sel ? 0 : offset * 5}deg)`,
-              transition: 'transform var(--dur-base) var(--ease-out)',
-              pointerEvents: 'auto',
-              zIndex: sel ? 20 : 10 - Math.abs(offset),
-              cursor: canPlay ? 'pointer' : 'not-allowed',
-            }} onClick={() => setSelectedHandIdx(sel ? null : i)}>
-              <window.CardTypoBold card={c} size="sm" faded={!canPlay} focus={sel} />
+            <div key={'opp' + k} style={{ width: BOARD_W, height: BOARD_H }}>
+              {c ? <BoardCardSlot card={c} mine={false} /> : <BoardSlot />}
             </div>
           );
         })}
       </div>
+
+      {/* Center divider + round marker */}
+      <div style={{ position: 'absolute', top: 332, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, pointerEvents: 'none' }}>
+        <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg, transparent, var(--line-gold), transparent)', maxWidth: 360 }} />
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--gold)', border: '1px solid var(--line-gold)', borderRadius: 999, padding: '5px 14px', background: 'rgba(10,9,8,0.7)', whiteSpace: 'nowrap' }}>◆ RODADA {round}</div>
+        <div style={{ height: 1, flex: 1, background: 'linear-gradient(90deg, transparent, var(--line-gold), transparent)', maxWidth: 360 }} />
+      </div>
+
+      {/* Game log — left, vertically centered */}
+      <div style={{ position: 'absolute', left: 24, top: '50%', transform: 'translateY(-50%)', zIndex: 30 }}>
+        <GameLog log={log} style={{ width: 250 }} />
+      </div>
+
+      {/* PLAYER board */}
+      <div style={{ position: 'absolute', bottom: 318, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 20, padding: '0 24px', height: BOARD_H }}>
+        {Array.from({ length: 3 }).map((_, k) => {
+          const c = myBoard[k];
+          return (
+            <div key={'me' + k} ref={el => { slotRefs.current[k] = el; }} style={{ width: BOARD_W, height: BOARD_H }}>
+              {c
+                ? <BoardCardSlot card={c} mine landed={landedSlot === k} onReturn={() => returnCard(k)} />
+                : <BoardSlot active={k === myBoard.length} />}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* PLAYER bar */}
+      <div style={{ position: 'absolute', bottom: 244, left: 24, right: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 24, zIndex: 20 }}>
+        <PlayerStrip player={{ ...G.me, hand, deckCount }} avatar={window.cardById('bigs')} side="bottom" />
+        <button onClick={finishTurn} className="btn btn-primary btn-lg" style={{ height: 56, padding: '0 32px', fontSize: 16, boxShadow: 'var(--shadow-gold)' }}>
+          Finalizar turno →
+        </button>
+      </div>
+
+      {/* DECK PILE (draw) — bottom right */}
+      <div className="bc-deck" ref={deckRef} onClick={drawCard} title="Comprar carta"
+        style={{
+          position: 'absolute', right: 28, bottom: 28, zIndex: 40,
+          width: 96, height: 134, cursor: deckCount > 0 ? 'pointer' : 'not-allowed',
+          opacity: deckCount > 0 ? 1 : 0.5,
+        }}>
+        {/* stacked backs */}
+        {[3, 2, 1, 0].map(d => (
+          <div key={d} style={{
+            position: 'absolute', inset: 0,
+            transform: `translate(${d * 3}px, ${-d * 3}px)`,
+            background: 'linear-gradient(150deg, #2a1b08 0%, #100a05 100%)',
+            border: '1px solid var(--gold)', borderRadius: 8,
+            boxShadow: d === 0 ? '0 10px 24px -8px rgba(0,0,0,0.8), 0 0 18px -4px var(--gold-glow)' : '0 4px 10px rgba(0,0,0,0.5)',
+            display: d === 0 ? 'flex' : 'block',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {d === 0 && <div style={{ fontFamily: 'var(--font-display)', fontSize: 40, color: 'var(--gold)', opacity: 0.85 }}>B</div>}
+          </div>
+        ))}
+        <div style={{ position: 'absolute', top: -10, left: -10, width: 28, height: 28, borderRadius: '50%', background: 'var(--gold)', color: 'var(--ink-on-gold)', fontFamily: 'var(--font-display)', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5, boxShadow: 'var(--shadow-sm)' }}>{deckCount}</div>
+        <div style={{ position: 'absolute', bottom: -22, left: 0, right: 0, textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.18em', color: 'var(--gold)' }}>COMPRAR</div>
+      </div>
+
+      {/* GRAVEYARD count — discreet, opposite deck */}
+      <div style={{ position: 'absolute', left: 28, bottom: 34, zIndex: 40, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.7 }}>
+        <div style={{ width: 36, height: 50, border: '1px dashed var(--line-3)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--ink-4)' }}>{graveyard}</div>
+        <div className="mono" style={{ fontSize: 9, letterSpacing: '0.18em', color: 'var(--ink-4)' }}>DESCARTE</div>
+      </div>
+
+      {/* PLAYER hand — Hearthstone-style hover */}
+      <div
+        onMouseLeave={() => setHoverIdx(null)}
+        style={{ position: 'absolute', bottom: -8, left: 0, right: 0, height: 220, display: 'flex', justifyContent: 'center', alignItems: 'flex-end', pointerEvents: 'none' }}
+      >
+        {hand.map((c, i) => {
+          const n = hand.length;
+          const offset = i - (n - 1) / 2;
+          const isHover = hoverIdx === i;
+          const canPlay = c.cost <= elixir;
+          let tx = offset * HAND_SPACING;
+          let ty = Math.abs(offset) * 16;
+          let rot = offset * 4;
+          let scale = 1;
+          let z = 10 + i;
+          if (hoverIdx != null) {
+            if (isHover) { ty = -150; rot = 0; scale = 1.5; z = 100; }
+            else { tx += (i < hoverIdx ? -52 : 52); z = 10 + i; }
+          }
+          return (
+            <div
+              key={c.id}
+              ref={el => { handRefs.current[c.id] = el; }}
+              className="bc-hand-card"
+              onMouseEnter={() => setHoverIdx(i)}
+              onClick={() => playCard(i)}
+              style={{
+                position: 'absolute', bottom: 0,
+                transform: `translateX(${tx}px) translateY(${ty}px) rotate(${rot}deg) scale(${scale})`,
+                transformOrigin: 'bottom center',
+                zIndex: z,
+                pointerEvents: 'auto',
+                cursor: canPlay ? 'pointer' : 'not-allowed',
+                opacity: c.id === drawId ? 0 : 1,
+                filter: isHover
+                  ? `drop-shadow(0 24px 36px rgba(0,0,0,0.7)) drop-shadow(0 0 24px ${canPlay ? c.accent : 'rgba(0,0,0,0)'}99)`
+                  : 'none',
+              }}
+            >
+              <window.CardTypoBold card={c} size="sm" faded={!canPlay} focus={isHover} />
+              {/* play affordance shown on hover */}
+              {isHover && (
+                <div style={{
+                  position: 'absolute', top: -30, left: '50%', transform: 'translateX(-50%)',
+                  fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.18em',
+                  color: canPlay ? 'var(--gold)' : 'var(--crimson)', whiteSpace: 'nowrap',
+                  background: 'rgba(10,9,8,0.9)', padding: '4px 10px', borderRadius: 999,
+                  border: `1px solid ${canPlay ? 'var(--line-gold)' : 'var(--crimson-soft)'}`,
+                }}>{canPlay ? '▲ CLIQUE PRA JOGAR' : `● PRECISA ${c.cost} ELIXIR`}</div>
+              )}
+            </div>
+          );
+        })}
+        {hand.length === 0 && (
+          <div className="mono" style={{ position: 'absolute', bottom: 80, fontSize: 11, letterSpacing: '0.2em', color: 'var(--ink-4)' }}>
+            MÃO VAZIA · COMPRE UMA CARTA →
+          </div>
+        )}
+      </div>
+
+      {/* FLYERS overlay */}
+      {flyers.map(f => <Flyer key={f.id} flyer={f} onDone={onFlyerDone} />)}
     </div>
   );
 }
@@ -271,14 +563,16 @@ function PlayerStrip({ player, avatar, side }) {
   );
 }
 
-function BoardSlot({ active }) {
+function BoardSlot({ active, w = 132, h = 185 }) {
   return (
     <div style={{
-      width: 160, height: 224,
+      width: w, height: h,
       border: `1.5px dashed ${active ? 'var(--gold)' : 'var(--line-2)'}`,
       borderRadius: 'var(--r-md)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       opacity: active ? 1 : 0.4,
+      background: active ? 'var(--gold-soft)' : 'transparent',
+      transition: 'all var(--dur-base) var(--ease-out)',
     }}>
       <span className="mono" style={{ fontSize: 9, letterSpacing: '0.2em', color: active ? 'var(--gold)' : 'var(--ink-4)' }}>
         {active ? '+ JOGAR' : 'VAZIO'}
@@ -429,7 +723,7 @@ function MatchCompact({ goToScreen }) {
             </div>
             <HPRing hp={opponent.hp} hpMax={opponent.hpMax} size={56} color="var(--crimson)" />
             <ElixirBar elixir={opponent.elixir} elixirMax={opponent.elixirMax} />
-            <div style={{ display: 'flex', gap: -4 }}>
+            <div style={{ display: 'flex' }}>
               {Array.from({ length: opponent.handCount }).map((_, i) => (
                 <div key={i} style={{ width: 24, height: 34, background: 'var(--bg-2)', border: '1px solid var(--gold)', borderRadius: 2, marginLeft: i ? -8 : 0 }} />
               ))}
@@ -440,7 +734,7 @@ function MatchCompact({ goToScreen }) {
           <div className="eyebrow" style={{ color: 'var(--crimson)', textAlign: 'center', marginBottom: 12 }}>► TABULEIRO DO OPONENTE</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
             {opponent.board.map(c => <window.CardTypoBold key={c.id} card={c} size="sm" />)}
-            {Array.from({ length: 3 - opponent.board.length }).map((_, i) => <BoardSlot key={'osc' + i} />)}
+            {Array.from({ length: 3 - opponent.board.length }).map((_, i) => <BoardSlot key={'osc' + i} w={160} h={224} />)}
           </div>
 
           {/* divider with log */}
@@ -453,7 +747,7 @@ function MatchCompact({ goToScreen }) {
           <div className="eyebrow" style={{ color: 'var(--gold)', textAlign: 'center', marginBottom: 12 }}>► SEU TABULEIRO</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
             {me.board.map(c => <window.CardTypoBold key={c.id} card={c} size="sm" focus />)}
-            {Array.from({ length: 3 - me.board.length }).map((_, i) => <BoardSlot key={'msc' + i} active />)}
+            {Array.from({ length: 3 - me.board.length }).map((_, i) => <BoardSlot key={'msc' + i} active w={160} h={224} />)}
           </div>
 
           {/* my stat bar */}
