@@ -18,6 +18,7 @@ export function SocketProvider({ children }) {
   const [queueType, setQueueType] = useState('casual')
   const [rankUpdate, setRankUpdate] = useState(null)  // { delta, newPts, isWin, rank }
   const [rankedJustUnlocked, setRankedJustUnlocked] = useState(false)
+  const [challengePing, setChallengePing] = useState(0)  // incrementa ao receber desafio
 
   useEffect(() => {
     if (!user) {
@@ -42,6 +43,7 @@ export function SocketProvider({ children }) {
     })
     s.on('rank:update', (data) => setRankUpdate(data))
     s.on('ranked:unlocked', () => setRankedJustUnlocked(true))
+    s.on('challenge:received', () => setChallengePing(n => n + 1))
 
     return () => {
       s.disconnect()
@@ -72,7 +74,7 @@ export function SocketProvider({ children }) {
   return (
     <SocketContext.Provider value={{
       socket, onlineIds, match, inQueue, queueType,
-      rankUpdate, rankedJustUnlocked,
+      rankUpdate, rankedJustUnlocked, challengePing,
       joinQueue, leaveQueue, clearMatch, clearRankUpdate, clearRankedUnlocked,
     }}>
       {children}

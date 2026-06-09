@@ -34,6 +34,7 @@ function makePlayer(p) {
     hand,
     board: [],
     graveyard: [],
+    stats: { cardsPlayed: 0, specialsUsed: 0, damageDealt: 0, minigamesWon: 0 },
   }
 }
 
@@ -155,6 +156,11 @@ function playCard(roomId, userId, handIndex) {
   const player = game.players[userId]
   if (player.board.length >= BOARD_CAP) return { error: 'Tabuleiro cheio (máx 3)' }
 
+  if (player.skipNextCardPlay) {
+    delete player.skipNextCardPlay
+    return { error: 'Pepão big head! Você não pode jogar cartas nesse turno.' }
+  }
+
   const cardId = player.hand[handIndex]
   if (!cardId) return { error: 'Carta inválida' }
 
@@ -176,6 +182,7 @@ function playCard(roomId, userId, handIndex) {
   if (cardId === 'pirula'&& hasOn(opp, 'eric'))   { minion.permAtk -= 1 }
 
   player.board.push(minion)
+  player.stats.cardsPlayed++
 
   // Davi "Chama pra briga": a próxima carta do oponente enfrenta o Davi imediatamente
   if (player.tauntOnPlay && player.tauntOnPlay.untilRound >= game.round) {
@@ -313,6 +320,7 @@ function attack(roomId, userId, attackerUid, target) {
     event.target = { type: 'player', ownerId: oppId }
     event.dmgToTarget = dmg
     event.dmgToAttacker = 0
+    me.stats.damageDealt += dmg
 
     // Pepão passive: 30% ao atacar o jogador adversário
     if (!game._minigameTrigger && attacker.cardId === 'pepao' && Math.random() < 0.30) {
@@ -336,6 +344,7 @@ function attack(roomId, userId, attackerUid, target) {
     applyDamage(game, oppId, defender, attacker, dmgToDef)
     applyDamage(game, userId, attacker, defender, dmgToAtk)
     attacker.hasAttacked = true
+    me.stats.damageDealt += dmgToDef
 
     event.target = { type: 'card', uid: defender.uid, ownerId: oppId }
     event.dmgToTarget = dmgToDef
@@ -460,7 +469,7 @@ const SPECIALS = {
   },
 
   pepao({ game, userId }) {
-    game._minigameTrigger = {}  // special: minigame sem bônus de passiva
+    game._minigameTrigger = { pepaoSpecial: true, pepaoOwnerId: userId }
     return { event: { minigame: true } }
   },
 }
@@ -487,6 +496,8 @@ function activateSpecial(roomId, userId, sourceUid, target) {
   if (result?.error) return result
 
   me.elixir -= cost
+  me.stats.specialsUsed++
+  if (result?.event?.dmgToTarget) me.stats.damageDealt += result.event.dmgToTarget
   if (source.cardId === 'pirula') source.specialUsed = true
 
   const event = {
@@ -506,6 +517,9 @@ function endTurn(roomId, userId) {
   const game = games.get(roomId)
   if (!game || game.status !== 'playing') return { error: 'Partida não encontrada' }
   if (game.turn !== userId) return { error: 'Não é seu turno' }
+
+  // limpa bloqueio de carta do jogador que está encerrando turno
+  if (game.players[userId].skipNextCardPlay) delete game.players[userId].skipNextCardPlay
 
   game.turnsThisRound++
   if (game.turnsThisRound >= 2) {
@@ -625,8 +639,10 @@ function viewFor(roomId, userId) {
       hand: me.hand, deckCount: me.deck.length,
       board: me.board.map(m => publicMinion(game, userId, m, true)),
       graveyard: me.graveyard,
-      tauntedBy: me.tauntOnPlay?.byUid || null,        // Davi inimigo provocando minha próxima carta
+      tauntedBy: me.tauntOnPlay?.byUid || null,
       nextCardCostMult: me.nextCardCostMult?.value || 1,
+      cardPlayBlocked: !!me.skipNextCardPlay,
+      stats: me.stats,
     },
     opponent: {
       id: opp.id, username: opp.username, hp: opp.hp,

@@ -864,6 +864,7 @@ export default function Match() {
   const [log, setLog] = useState([])                  // [{ id, kind, text }]
   const [handOpen, setHandOpen] = useState(true)
   const [minigame, setMinigame] = useState(null)  // { type, payload, round }
+  const matchStartRef = useRef(Date.now())
   const minionRefs = useRef(new Map())
   const oppFaceRef = useRef(null)
   const myFaceRef = useRef(null)
@@ -1001,6 +1002,34 @@ export default function Match() {
     if (match && state?.status === 'playing') socket.emit('game:surrender', match.roomId)
     clearMatch()
     navigate('/home')
+  }
+
+  function goToEnd() {
+    const s = state
+    const iWon = s ? s.winner === user.id : false
+    const isDraw = s ? s.winner == null : false
+    const secs = Math.round((Date.now() - matchStartRef.current) / 1000)
+    const duration = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
+    const meBoard = s?.me?.board || []
+    const mvp = meBoard.length > 0
+      ? meBoard.reduce((best, m) => (m.hp > best.hp ? m : best)).cardId
+      : (s?.me?.graveyard?.[s.me.graveyard.length - 1] || 'bigs')
+    clearMatch()
+    navigate('/end', { state: {
+      result: isDraw ? 'draw' : iWon ? 'win' : 'loss',
+      score: `${s?.me?.hp ?? 0}–${s?.opponent?.hp ?? 0}`,
+      rounds: s?.round ?? 0,
+      duration,
+      opponent: s?.opponent?.username ?? '???',
+      matchType: match?.type || 'casual',
+      mvp,
+      stats: [
+        { l: 'CARTAS JOGADAS',   v: s?.me?.stats?.cardsPlayed  ?? 0 },
+        { l: 'ESPECIAIS USADAS', v: s?.me?.stats?.specialsUsed ?? 0 },
+        { l: 'DANO INFLIGIDO',   v: s?.me?.stats?.damageDealt  ?? 0 },
+        { l: 'MINIGAMES GANHOS', v: s?.me?.stats?.minigamesWon ?? 0 },
+      ],
+    }})
   }
 
   if (!match) {
@@ -1141,13 +1170,15 @@ export default function Match() {
         transition: 'transform var(--dur-base) var(--ease-out)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div className="eyebrow" style={{ color: 'var(--gold)' }}>► SUA MÃO · {me.hand.length} CARTAS</div>
+          <div className="eyebrow" style={{ color: me.cardPlayBlocked ? 'var(--crimson)' : 'var(--gold)' }}>
+            {me.cardPlayBlocked ? '⚠ PEPÃO BIG HEAD — NÃO PODE JOGAR CARTAS' : `► SUA MÃO · ${me.hand.length} CARTAS`}
+          </div>
           <div className="mono" style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--ink-4)' }}>DECK {me.deckCount}</div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, minHeight: 132 }}>
           {me.hand.map((cardId, i) => {
             const data = cardById(cardId) || {}
-            const playable = isMyTurn && !ended && me.elixir >= (data.cost ?? 99) && me.board.length < 3
+            const playable = isMyTurn && !ended && !me.cardPlayBlocked && me.elixir >= (data.cost ?? 99) && me.board.length < 3
             return (
               <HandCard key={i} cardId={cardId} playable={playable} onPlay={() => playCard(i)}
                 onHover={onCardHover} onLeave={onCardLeave} />
@@ -1183,7 +1214,12 @@ export default function Match() {
           <h1 className="display" style={{ fontSize: 80, lineHeight: 0.9, color: iWon ? 'var(--emerald)' : 'var(--crimson)' }}>
             {iWon ? 'VITÓRIA' : 'DERROTA'}
           </h1>
-          <button onClick={exit} className="btn btn-primary btn-lg">Voltar pra Home</button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={exit} className="btn btn-ghost btn-lg">← Home</button>
+            <button onClick={goToEnd} className="btn btn-primary btn-lg" style={{ height: 56, padding: '0 28px' }}>
+              Ver resultado →
+            </button>
+          </div>
         </div>
       )}
 

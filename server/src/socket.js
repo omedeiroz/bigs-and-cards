@@ -111,6 +111,12 @@ function resolveMinigame(roomId) {
 
   if (loserId) game.applyMinigameDamage(roomId, loserId)
 
+  // Contabiliza vitória de minigame no jogador vencedor
+  if (winnerId) {
+    const freshGame = game.getGame(roomId)
+    if (freshGame?.players[winnerId]?.stats) freshGame.players[winnerId].stats.minigamesWon++
+  }
+
   // Pepão passive bonus: se o dono do Pepão venceu o minigame, +1 dano extra
   const pepaoOwnerId = state.ctx?.pepaoOwnerId
   let pepaoBonus = false
@@ -119,6 +125,15 @@ function resolveMinigame(roomId) {
     if (bonusTarget) {
       game.applyMinigameDamage(roomId, bonusTarget)
       pepaoBonus = true
+    }
+  }
+
+  // Pepão special: se dono do Pepão venceu → adversário não pode jogar cartas nesse turno
+  if (state.ctx?.pepaoSpecial && winnerId === state.ctx.pepaoOwnerId) {
+    const pepaoOpp = state.order.find(id => id !== winnerId)
+    const freshGame = game.getGame(roomId)
+    if (freshGame && pepaoOpp && freshGame.players[pepaoOpp]) {
+      freshGame.players[pepaoOpp].skipNextCardPlay = true
     }
   }
 

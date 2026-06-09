@@ -1,22 +1,25 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, LayoutGrid, Users, Swords, User } from 'lucide-react'
+import { Home, LayoutGrid, Users, Swords, User, Trophy } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { useSocket } from '../context/SocketContext'
 
-const ICONS = { Home, LayoutGrid, Users, Swords, User }
+const ICONS = { Home, LayoutGrid, Users, Swords, User, Trophy }
 
 const NAV_ITEMS = [
-  { id: '/home',       label: 'Início',    icon: 'Home' },
-  { id: '/roster',     label: 'Cartas',    icon: 'LayoutGrid' },
-  { id: '/friends',    label: 'Amigos',    icon: 'Users' },
-  { id: '/challenges', label: 'Desafios',  icon: 'Swords' },
-  { id: '/profile',    label: 'Perfil',    icon: 'User' },
+  { id: '/home',         label: 'Início',      icon: 'Home' },
+  { id: '/roster',       label: 'Cartas',      icon: 'LayoutGrid' },
+  { id: '/leaderboard',  label: 'Ranking',     icon: 'Trophy' },
+  { id: '/friends',      label: 'Amigos',      icon: 'Users' },
+  { id: '/challenges',   label: 'Desafios',    icon: 'Swords' },
+  { id: '/profile',      label: 'Perfil',      icon: 'User' },
 ]
 
 export default function Sidebar() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { user } = useAuth()
+  const { challengePing } = useSocket()
   const [pendingCount, setPendingCount] = useState(0)
   const [challengeCount, setChallengeCount] = useState(0)
 
@@ -40,6 +43,17 @@ export default function Sidebar() {
     const interval = setInterval(refresh, 4000)
     return () => clearInterval(interval)
   }, [pathname])
+
+  // re-busca imediatamente quando chega um desafio via socket
+  useEffect(() => {
+    if (!challengePing) return
+    const token = localStorage.getItem('bigs-token')
+    if (!token) return
+    fetch('/api/challenges/received', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setChallengeCount(data.length) })
+      .catch(() => {})
+  }, [challengePing])
 
   const items = NAV_ITEMS.map(it => {
     if (it.id === '/friends' && pendingCount > 0) return { ...it, badge: pendingCount }

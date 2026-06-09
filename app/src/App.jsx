@@ -11,6 +11,7 @@ import Match from './pages/Match'
 import End from './pages/End'
 import Profile from './pages/Profile'
 import Cards from './pages/Cards'
+import Leaderboard from './pages/Leaderboard'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -37,8 +38,9 @@ export default function App() {
           <Route path="/lobby"      element={<PrivateRoute><Lobby /></PrivateRoute>} />
           <Route path="/match"      element={<PrivateRoute><Match /></PrivateRoute>} />
           <Route path="/end"        element={<PrivateRoute><End /></PrivateRoute>} />
-          <Route path="/profile"    element={<PrivateRoute><Profile /></PrivateRoute>} />
-          <Route path="/cards"      element={<PrivateRoute><Cards /></PrivateRoute>} />
+          <Route path="/profile"     element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/leaderboard" element={<PrivateRoute><Leaderboard /></PrivateRoute>} />
+          <Route path="/cards"       element={<PrivateRoute><Cards /></PrivateRoute>} />
           <Route path="*"           element={<Navigate to="/home" replace />} />
         </Routes>
         </SocketProvider>

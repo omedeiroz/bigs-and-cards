@@ -8,6 +8,7 @@
 //        opponent, matchType: 'ranked'|'casual', mvp (cardId), stats: [{l,v}] }
 //  - Rank delta via useSocket().rankUpdate (evento `rank:update`):
 //      { delta, newPts, isWin, rank }  — só em partidas ranqueadas
+//  Ver IMPLEMENTAR.md pra o trecho de navegação no Match.jsx.
 // ============================================================
 import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
