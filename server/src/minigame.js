@@ -1,4 +1,4 @@
-const TYPES = ['teclado', 'choro', 'reacao', 'clique', 'blefe', 'par_impar', 'mira', 'jokenpo']
+const TYPES = ['teclado', 'choro', 'reacao', 'clique', 'par_impar', 'mira', 'jokenpo']
 
 const SEQUENCES = [
   ['Q','W','A','S'], ['E','R','D','F'], ['A','S','D','F'],

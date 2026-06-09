@@ -128,7 +128,8 @@ function resolveMinigame(roomId) {
   const winnerId = side === 'a' ? aId : side === 'b' ? bId : null
   const loserId = winnerId ? state.order.find(id => id !== winnerId) : null
 
-  if (loserId) game.applyMinigameDamage(roomId, loserId)
+  const dmg = game.minigameDamage(g.round)
+  if (loserId) game.applyMinigameDamage(roomId, loserId, dmg)
 
   // Contabiliza vitória de minigame no jogador vencedor
   if (winnerId) {
@@ -142,7 +143,7 @@ function resolveMinigame(roomId) {
   if (pepaoOwnerId && winnerId === pepaoOwnerId) {
     const bonusTarget = state.order.find(id => id !== pepaoOwnerId)
     if (bonusTarget) {
-      game.applyMinigameDamage(roomId, bonusTarget)
+      game.applyMinigameDamage(roomId, bonusTarget, 1)
       pepaoBonus = true
     }
   }
@@ -163,7 +164,7 @@ function resolveMinigame(roomId) {
     for (const pid of state.order) game.grantElixir(roomId, pid, 1)
   }
 
-  const baseDamage = loserId ? 1 : 0
+  const baseDamage = loserId ? dmg : 0
   const resultPayload = {
     type: state.type,
     winner: winnerId,

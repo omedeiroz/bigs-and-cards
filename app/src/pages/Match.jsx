@@ -294,7 +294,6 @@ const MG_META = {
   choro:     { name: 'Segura o Choro',       type: 'QTE',       accent: 'var(--gold)'    },
   reacao:    { name: 'Reação Pura',          type: 'QTE',       accent: 'var(--emerald)' },
   clique:    { name: 'Clique Frenético',     type: 'QTE',       accent: 'var(--sapphire)'},
-  blefe:     { name: 'Blefe',                type: 'Leitura',   accent: 'var(--purple)'  },
   par_impar: { name: 'Par ou Ímpar',         type: 'Clássico',  accent: 'var(--mint)'    },
   mira:      { name: 'Mira Louca',           type: 'Precisão',  accent: 'var(--crimson)' },
   jokenpo:   { name: 'Pedra Papel Tesoura',  type: 'Estratégia',accent: 'var(--gold)'    },
@@ -508,32 +507,6 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
           CLICAR
         </button>
         <div className="mono" style={{ fontSize: 10, letterSpacing: '0.14em', color: 'var(--ink-4)' }}>CLIQUE OU PRESSIONE ESPAÇO</div>
-      </div>
-    )
-  }
-
-  // BLEFE
-  if (type === 'blefe') {
-    const [chosen, setChosen] = us(null)
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-        <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-3)' }}>ESCOLHA UM NÚMERO (1-5) — MAIOR VENCE</div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {[1,2,3,4,5].map(n => (
-            <button key={n} onClick={() => !submitted && setChosen(n)} style={{
-              width: 64, height: 64, borderRadius: 10,
-              background: chosen === n ? accent : 'var(--surface-2)',
-              border: `2px solid ${chosen === n ? accent : 'var(--line-2)'}`,
-              fontFamily: 'var(--font-display)', fontSize: 32,
-              color: chosen === n ? 'var(--bg)' : 'var(--ink-1)',
-              boxShadow: chosen === n ? `0 0 24px ${accent}66` : 'none',
-              cursor: submitted ? 'default' : 'pointer',
-            }}>{n}</button>
-          ))}
-        </div>
-        <button onClick={() => chosen && onSubmit({ number: chosen })} disabled={!chosen || submitted} className="btn btn-primary btn-lg" style={{ opacity: (!chosen || submitted) ? 0.5 : 1 }}>
-          {submitted ? 'Aguardando oponente...' : 'Confirmar'}
-        </button>
       </div>
     )
   }
@@ -821,7 +794,6 @@ function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) 
               {data.type === 'choro'     && `Para a barra na zona dourada (${data.payload.targetPct}%) — mais perto vence`}
               {data.type === 'reacao'    && 'Quando ficar verde — aperta o mais rápido possível'}
               {data.type === 'clique'    && '5 segundos — mais cliques vence'}
-              {data.type === 'blefe'     && 'Escolha 1-5 em segredo — maior número vence'}
               {data.type === 'par_impar' && 'Aposta par/ímpar e escolhe um número — soma decide'}
               {data.type === 'mira'      && 'Alvo em movimento — 3 hits vence'}
               {data.type === 'jokenpo'   && 'Pedra, papel ou tesoura — reveal simultâneo'}
@@ -1128,6 +1100,7 @@ export default function Match() {
   }
 
   const { me, opponent, isMyTurn, round, status, winner } = state
+  const boardCap = state.boardCap ?? 3
   const ended = status === 'ended'
   const iWon = winner === user.id
   const canAttackWith = (m) => isMyTurn && !ended && !m.summoned && !m.hasAttacked
@@ -1169,11 +1142,11 @@ export default function Match() {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* opponent bar */}
-          <PlayerBar p={opponent} isOpponent isTurn={!isMyTurn} targetable={aiming} onClick={() => doAttack({ type: 'player' })} innerRef={oppFaceRef} />
+          <PlayerBar p={opponent} isOpponent isTurn={!isMyTurn} innerRef={oppFaceRef} />
 
           <div className="eyebrow" style={{ color: 'var(--crimson)', textAlign: 'center' }}>► TABULEIRO DO OPONENTE</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-            {[0, 1, 2].map(i => {
+            {Array.from({ length: boardCap }).map((_, i) => {
               const m = opponent.board[i]
               if (!m) return <BoardSlot key={'oe' + i} />
               return (
@@ -1201,7 +1174,7 @@ export default function Match() {
 
           <div className="eyebrow" style={{ color: 'var(--gold)', textAlign: 'center' }}>► SEU TABULEIRO</div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-            {[0, 1, 2].map(i => {
+            {Array.from({ length: boardCap }).map((_, i) => {
               const m = me.board[i]
               if (!m) return <BoardSlot key={'me' + i} highlight={isMyTurn && me.hand.length > 0} />
               return (
@@ -1258,7 +1231,7 @@ export default function Match() {
         <div style={{ display: 'flex', justifyContent: 'center', gap: 12, minHeight: 132 }}>
           {me.hand.map((cardId, i) => {
             const data = cardById(cardId) || {}
-            const playable = isMyTurn && !ended && !me.cardPlayBlocked && me.elixir >= (data.cost ?? 99) && me.board.length < 3
+            const playable = isMyTurn && !ended && !me.cardPlayBlocked && me.elixir >= (data.cost ?? 99) && me.board.length < boardCap
             return (
               <HandCard key={i} cardId={cardId} playable={playable} onPlay={() => playCard(i)}
                 onHover={onCardHover} onLeave={onCardLeave} />
@@ -1272,7 +1245,7 @@ export default function Match() {
 
       {aiming && (
         <div style={{ position: 'absolute', bottom: 92, left: '50%', transform: 'translateX(-50%)', background: 'var(--crimson)', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Crosshair size={14} /> Escolha o alvo (carta inimiga ou o oponente)
+          <Crosshair size={14} /> Escolha uma carta inimiga para atacar
         </div>
       )}
 

@@ -5,7 +5,13 @@ const STARTING_HAND = 3
 const STARTING_ELIXIR = 5
 const ELIXIR_CAP = 10
 const PLAYER_HP = 20
-const BOARD_CAP = 3
+
+// Slots do tabuleiro aumentam com o avanço das rodadas
+function boardCap(round) {
+  if (round >= 7) return 5
+  if (round >= 5) return 4
+  return 3
+}
 
 const games = new Map() // roomId -> game
 let uidCounter = 1
@@ -154,7 +160,8 @@ function playCard(roomId, userId, handIndex) {
   if (game.turn !== userId) return { error: 'Não é seu turno' }
 
   const player = game.players[userId]
-  if (player.board.length >= BOARD_CAP) return { error: 'Tabuleiro cheio (máx 3)' }
+  const cap = boardCap(game.round)
+  if (player.board.length >= cap) return { error: `Tabuleiro cheio (máx ${cap})` }
 
   if (player.skipNextCardPlay) {
     delete player.skipNextCardPlay
@@ -307,6 +314,7 @@ function attack(roomId, userId, attackerUid, target) {
   if (!attacker) return { error: 'Atacante inválido' }
   if (attacker.summoned) return { error: 'Carta não pode atacar no turno que entrou' }
   if (attacker.hasAttacked) return { error: 'Essa carta já atacou nesse turno' }
+  if (target?.type === 'player') return { error: 'Só dá pra atacar cartas inimigas' }
 
   const aAtk = effAtk(game, userId, attacker)
   const myBonus = (me.teamDamageBonus && me.teamDamageBonus.untilRound >= game.round) ? me.teamDamageBonus.value : 0
@@ -570,10 +578,15 @@ function endTurn(roomId, userId) {
   return { ok: true, triggerMinigame }
 }
 
-function applyMinigameDamage(roomId, loserId) {
+// Dano do minigame escala com a rodada: 2 até a 6, 5 a partir da 7
+function minigameDamage(round) {
+  return round >= 7 ? 5 : 2
+}
+
+function applyMinigameDamage(roomId, loserId, amount = 1) {
   const game = games.get(roomId)
   if (!game || game.status !== 'playing') return
-  game.players[loserId].hp -= 1
+  game.players[loserId].hp -= amount
   checkWin(game)
 }
 
@@ -637,6 +650,7 @@ function viewFor(roomId, userId) {
   return {
     roomId: game.roomId,
     round: game.round,
+    boardCap: boardCap(game.round),
     turn: game.turn,
     isMyTurn: game.turn === userId,
     status: game.status,
@@ -662,4 +676,4 @@ function viewFor(roomId, userId) {
   }
 }
 
-module.exports = { createGame, getGame, removeGame, playCard, endTurn, attack, activateSpecial, surrender, viewFor, applyMinigameDamage, consumeMinigameTrigger, grantElixir }
+module.exports = { createGame, getGame, removeGame, playCard, endTurn, attack, activateSpecial, surrender, viewFor, applyMinigameDamage, consumeMinigameTrigger, grantElixir, minigameDamage }
