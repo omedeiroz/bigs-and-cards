@@ -676,9 +676,80 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
   return <div className="mono" style={{ color: 'var(--ink-4)' }}>CARREGANDO MINIGAME...</div>
 }
 
+function MinigameConfirm({ data, socket, roomId }) {
+  const [sent, setSent] = useState(false)
+  const [readyCount, setReadyCount] = useState(0)
+  const meta = MG_META[data.type] || MG_META.teclado
+  const accent = meta.accent
+
+  useEffect(() => {
+    function onReadyState({ ready }) { setReadyCount(ready) }
+    socket.on('minigame:readyState', onReadyState)
+    return () => socket.off('minigame:readyState', onReadyState)
+  }, [socket])
+
+  function handleReady() {
+    if (sent) return
+    setSent(true)
+    socket.emit('minigame:ready', roomId)
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28,
+    }}>
+      <div className="eyebrow" style={{ color: accent, letterSpacing: '0.22em' }}>◆ MINIGAME CHEGANDO ◆</div>
+      <div className="display" style={{
+        fontSize: 80, lineHeight: 0.9, textAlign: 'center',
+        background: `linear-gradient(180deg, var(--ink-1), ${accent})`,
+        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+      }}>
+        {meta.name.toUpperCase()}
+      </div>
+      <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-3)' }}>
+        {meta.type.toUpperCase()} · RODADA {data.round}
+      </div>
+
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+        {[0, 1].map(i => (
+          <div key={i} style={{
+            width: 52, height: 52, borderRadius: '50%',
+            border: `2px solid ${i < readyCount ? 'var(--emerald)' : 'var(--line-2)'}`,
+            background: i < readyCount ? 'rgba(138,226,52,0.12)' : 'rgba(255,255,255,0.03)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.3s',
+            fontSize: 22,
+          }}>
+            <span style={{ color: i < readyCount ? 'var(--emerald)' : 'var(--ink-4)' }}>
+              {i < readyCount ? '✓' : '·'}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--ink-4)', marginTop: -16 }}>
+        {readyCount}/2 prontos
+      </div>
+
+      <button
+        onClick={handleReady}
+        disabled={sent}
+        className="btn btn-primary btn-lg"
+        style={{ height: 64, padding: '0 56px', fontSize: 20, opacity: sent ? 0.6 : 1 }}
+      >
+        {sent ? 'Aguardando oponente...' : 'PRONTO!'}
+      </button>
+
+      <div className="mono" style={{ fontSize: 9, letterSpacing: '0.16em', color: 'var(--ink-4)' }}>
+        começa automaticamente em alguns segundos se não confirmar
+      </div>
+    </div>
+  )
+}
+
 function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) {
   const [phase, setPhase] = useState('ready')
-  const [countdown, setCountdown] = useState(3)
+  const [countdown, setCountdown] = useState(5)
   const [result, setResult] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const meta = MG_META[data.type] || MG_META.teclado
@@ -779,10 +850,13 @@ function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) 
               {isDraw ? 'EMPATE' : iWon ? 'VITÓRIA' : 'DERROTA'}
             </div>
             {!isDraw && result.damage > 0 && (
-              <div style={{ fontSize: 16, color: 'var(--ink-2)', marginBottom: 24 }}>
+              <div style={{ fontSize: 16, color: 'var(--ink-2)', marginBottom: 10 }}>
                 {iWon ? `${opponent?.username} leva ${result.damage} de dano` : `Você levou ${result.damage} de dano`}
               </div>
             )}
+            <div style={{ fontSize: 14, color: 'var(--purple)', marginBottom: 18, fontWeight: 600 }}>
+              {isDraw ? '⬡ +1 elixir para cada' : iWon ? '⬡ +2 elixir para você' : '⬡ sem elixir desta vez'}
+            </div>
             <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-4)' }}>Voltando à partida...</div>
           </div>
         )}
@@ -954,18 +1028,23 @@ export default function Match() {
     function onKey(e) {
       if (e.key === 'Escape') { setSelected(null); setSpecialAim(null) }
     }
+    function onMinigamePending(data) {
+      setMinigame({ type: data.type, round: data.round, phase: 'confirm' })
+    }
     function onMinigameStart(data) {
-      setMinigame(data)
+      setMinigame({ type: data.type, payload: data.payload, round: data.round, phase: 'active' })
     }
     socket.on('game:state', onState)
     socket.on('game:error', onError)
     socket.on('game:event', onEvent)
+    socket.on('minigame:pending', onMinigamePending)
     socket.on('minigame:start', onMinigameStart)
     window.addEventListener('keydown', onKey)
     return () => {
       socket.off('game:state', onState)
       socket.off('game:error', onError)
       socket.off('game:event', onEvent)
+      socket.off('minigame:pending', onMinigamePending)
       socket.off('minigame:start', onMinigameStart)
       window.removeEventListener('keydown', onKey)
     }
@@ -1072,6 +1151,7 @@ export default function Match() {
   }
 
   return (
+    <>
     <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #1a0d05 0%, #0a0908 100%)', position: 'relative', overflow: 'hidden' }}>
       {/* top bar */}
       <div style={{ position: 'sticky', top: 0, zIndex: 30, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(10,9,8,0.85)', backdropFilter: 'blur(20px)', borderBottom: '1px solid var(--line-1)' }}>
@@ -1226,19 +1306,6 @@ export default function Match() {
       {/* hover preview */}
       {hover && <HoverCard data={hover.data} live={hover.live} anchor={hover.anchor} />}
 
-      {/* minigame overlay */}
-      {minigame && (
-        <MinigameOverlay
-          data={minigame}
-          socket={socket}
-          roomId={match.roomId}
-          myId={user.id}
-          me={state?.me}
-          opponent={state?.opponent}
-          onClose={() => setMinigame(null)}
-        />
-      )}
-
       {/* números voadores de dano */}
       {hits.map(h => (
         <div key={h.id} style={{
@@ -1253,5 +1320,38 @@ export default function Match() {
         </div>
       ))}
     </div>
+
+    {/* blur/dim quando minigame ativo */}
+    {minigame && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 190,
+        backdropFilter: 'blur(8px)',
+        background: 'rgba(0,0,0,0.6)',
+        pointerEvents: 'none',
+      }} />
+    )}
+
+    {/* tela de confirmação "Pronto!" */}
+    {minigame?.phase === 'confirm' && (
+      <MinigameConfirm
+        data={minigame}
+        socket={socket}
+        roomId={match.roomId}
+      />
+    )}
+
+    {/* minigame em si */}
+    {minigame?.phase === 'active' && (
+      <MinigameOverlay
+        data={minigame}
+        socket={socket}
+        roomId={match.roomId}
+        myId={user.id}
+        me={state?.me}
+        opponent={state?.opponent}
+        onClose={() => setMinigame(null)}
+      />
+    )}
+    </>
   )
 }

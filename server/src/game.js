@@ -545,7 +545,7 @@ function endTurn(roomId, userId) {
 
   // elixir acumulativo: ganha +1/rodada (a partir do 2º turno do jogador), teto sobe 5->10
   np.maxElixir = Math.min(ELIXIR_CAP, STARTING_ELIXIR + (game.round - 1))
-  if (np.hasStarted) np.elixir = Math.min(np.maxElixir, np.elixir + 1)
+  if (np.hasStarted) np.elixir = Math.min(np.maxElixir, np.elixir + 2)
   else np.hasStarted = true
 
   // upkeep das cartas: reset de turno + passivas
@@ -586,6 +586,14 @@ function consumeMinigameTrigger(roomId) {
     return ctx
   }
   return null
+}
+
+function grantElixir(roomId, userId, amount) {
+  const g = games.get(roomId)
+  if (!g) return
+  const p = g.players[userId]
+  if (!p) return
+  p.elixir = Math.min(p.maxElixir, p.elixir + amount)
 }
 
 function surrender(roomId, userId) {
@@ -654,4 +662,4 @@ function viewFor(roomId, userId) {
   }
 }
 
-module.exports = { createGame, getGame, removeGame, playCard, endTurn, attack, activateSpecial, surrender, viewFor, applyMinigameDamage, consumeMinigameTrigger }
+module.exports = { createGame, getGame, removeGame, playCard, endTurn, attack, activateSpecial, surrender, viewFor, applyMinigameDamage, consumeMinigameTrigger, grantElixir }

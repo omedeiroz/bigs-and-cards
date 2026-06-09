@@ -70,7 +70,7 @@ function tryEnqueueAndMatch(uid, username, type) {
 function startMinigame(roomId, forcedType, ctx = {}) {
   const g = game.getGame(roomId)
   if (!g || g.status !== 'playing') return
-  if (mgState.has(roomId)) return // já tem um ativo
+  if (mgState.has(roomId)) return
 
   const type = forcedType || TYPES[Math.floor(Math.random() * TYPES.length)]
   const payload = generatePayload(type)
@@ -80,16 +80,35 @@ function startMinigame(roomId, forcedType, ctx = {}) {
     order: g.order.slice(),
     submissions: {},
     ctx,
+    ready: new Set(),
+    launched: false,
+    readyTimer: null,
     timer: null,
   }
   mgState.set(roomId, state)
 
   for (const pid of g.order) {
-    emitToUser(pid, 'minigame:start', { type, payload, round: g.round })
+    emitToUser(pid, 'minigame:pending', { type, round: g.round })
   }
 
-  // timeout: duração do jogo + 4s de buffer
-  state.timer = setTimeout(() => resolveMinigame(roomId), payload.durationMs + 4000)
+  // auto-inicia se ambos não confirmarem em 12s
+  state.readyTimer = setTimeout(() => launchMinigame(roomId), 12000)
+}
+
+function launchMinigame(roomId) {
+  const state = mgState.get(roomId)
+  if (!state || state.launched) return
+  clearTimeout(state.readyTimer)
+  state.launched = true
+
+  const g = game.getGame(roomId)
+  if (!g) return
+
+  for (const pid of state.order) {
+    emitToUser(pid, 'minigame:start', { type: state.type, payload: state.payload, round: g.round })
+  }
+
+  state.timer = setTimeout(() => resolveMinigame(roomId), state.payload.durationMs + 4000)
 }
 
 function resolveMinigame(roomId) {
@@ -137,6 +156,13 @@ function resolveMinigame(roomId) {
     }
   }
 
+  // Elixir rewards: vencedor +2, empate +1 cada
+  if (winnerId) {
+    game.grantElixir(roomId, winnerId, 2)
+  } else {
+    for (const pid of state.order) game.grantElixir(roomId, pid, 1)
+  }
+
   const baseDamage = loserId ? 1 : 0
   const resultPayload = {
     type: state.type,
@@ -146,6 +172,7 @@ function resolveMinigame(roomId) {
     damage: baseDamage + (pepaoBonus ? 1 : 0),
     pepaoBonus,
     values: { [aId]: valA, [bId]: valB },
+    elixirGrant: winnerId ? 2 : 1,
   }
   for (const pid of g.order) {
     emitToUser(pid, 'minigame:result', resultPayload)
@@ -367,6 +394,19 @@ function initSocket(server) {
       if (Object.keys(state.submissions).length >= 2) {
         resolveMinigame(roomId)
       }
+    })
+
+    socket.on('minigame:ready', (roomId) => {
+      const state = mgState.get(roomId)
+      if (!state || state.launched) return
+      if (!state.order.includes(socket.userId)) return
+      state.ready.add(socket.userId)
+
+      for (const pid of state.order) {
+        emitToUser(pid, 'minigame:readyState', { ready: state.ready.size, total: state.order.length })
+      }
+
+      if (state.ready.size >= state.order.length) launchMinigame(roomId)
     })
 
     socket.on('disconnect', () => {

@@ -22,39 +22,40 @@ function generatePayload(type) {
 }
 
 function evaluate(type, payload, valA, valB) {
-  function rnd() { return Math.random() < 0.5 ? 'a' : 'b' }
-
   switch (type) {
     case 'teclado': {
       const a = valA || { correct: 0, timeMs: Infinity }
       const b = valB || { correct: 0, timeMs: Infinity }
       if (a.correct !== b.correct) return a.correct > b.correct ? 'a' : 'b'
       if (a.timeMs !== b.timeMs) return a.timeMs < b.timeMs ? 'a' : 'b'
-      return rnd()
+      return null
     }
     case 'choro': {
       const tgt = payload.targetPct
       const da = Math.abs((valA?.pct ?? 0) - tgt)
       const db = Math.abs((valB?.pct ?? 100) - tgt)
-      if (Math.abs(da - db) < 0.5) return rnd()
+      if (Math.abs(da - db) < 0.5) return null
       return da < db ? 'a' : 'b'
     }
     case 'reacao': {
       const ta = valA?.timeMs ?? Infinity
       const tb = valB?.timeMs ?? Infinity
-      if (ta === tb) return rnd()
+      if (ta === Infinity && tb === Infinity) return null
+      if (ta === Infinity) return 'b'
+      if (tb === Infinity) return 'a'
+      if (ta === tb) return null
       return ta < tb ? 'a' : 'b'
     }
     case 'clique': {
       const ca = valA?.clicks ?? 0
       const cb = valB?.clicks ?? 0
-      if (ca === cb) return rnd()
+      if (ca === cb) return null
       return ca > cb ? 'a' : 'b'
     }
     case 'blefe': {
       const na = valA?.number ?? 0
       const nb = valB?.number ?? 0
-      if (na === nb) return rnd()
+      if (na === nb) return null
       return na > nb ? 'a' : 'b'
     }
     case 'par_impar': {
@@ -65,22 +66,25 @@ function evaluate(type, payload, valA, valB) {
       const bWins = valB?.choice === parity
       if (aWins && !bWins) return 'a'
       if (bWins && !aWins) return 'b'
-      return rnd()
+      return null
     }
     case 'mira': {
       const ha = valA?.hits ?? 0
       const hb = valB?.hits ?? 0
-      if (ha === hb) return rnd()
+      if (ha === hb) return null
       return ha > hb ? 'a' : 'b'
     }
     case 'jokenpo': {
       const pa = valA?.pick
       const pb = valB?.pick
-      if (!pa || !pb || pa === pb) return rnd()
+      if (!pa && !pb) return null
+      if (!pa) return 'b'
+      if (!pb) return 'a'
+      if (pa === pb) return null
       const beats = { pedra: 'tesoura', papel: 'pedra', tesoura: 'papel' }
       return beats[pa] === pb ? 'a' : 'b'
     }
-    default: return rnd()
+    default: return null
   }
 }
 
