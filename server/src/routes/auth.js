@@ -28,7 +28,7 @@ router.post('/register', async (req, res) => {
       data: { username, email, password: hashed }
     })
 
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '3h' })
     res.status(201).json({ token, user: { id: user.id, username: user.username, email: user.email } })
   } catch (err) {
     res.status(500).json({ error: 'Erro interno' })
@@ -49,7 +49,7 @@ router.post('/login', async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password)))
       return res.status(401).json({ error: 'Credenciais inválidas' })
 
-    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' })
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '3h' })
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } })
   } catch {
     res.status(500).json({ error: 'Erro interno' })
