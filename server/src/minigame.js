@@ -22,6 +22,9 @@ function generatePayload(type) {
 }
 
 function evaluate(type, payload, valA, valB) {
+  // Se ninguém jogou, é empate — qualquer minigame
+  if (valA == null && valB == null) return null
+
   switch (type) {
     case 'teclado': {
       const a = valA || { correct: 0, timeMs: Infinity }
@@ -32,8 +35,10 @@ function evaluate(type, payload, valA, valB) {
     }
     case 'choro': {
       const tgt = payload.targetPct
-      const da = Math.abs((valA?.pct ?? 0) - tgt)
-      const db = Math.abs((valB?.pct ?? 100) - tgt)
+      // quem não jogou conta como erro máximo (não favorece ninguém)
+      const da = valA?.pct == null ? Infinity : Math.abs(valA.pct - tgt)
+      const db = valB?.pct == null ? Infinity : Math.abs(valB.pct - tgt)
+      if (da === Infinity && db === Infinity) return null
       if (Math.abs(da - db) < 0.5) return null
       return da < db ? 'a' : 'b'
     }

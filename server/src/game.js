@@ -553,7 +553,8 @@ function endTurn(roomId, userId) {
 
   // elixir acumulativo: ganha +1/rodada (a partir do 2º turno do jogador), teto sobe 5->10
   np.maxElixir = Math.min(ELIXIR_CAP, STARTING_ELIXIR + (game.round - 1))
-  if (np.hasStarted) np.elixir = Math.min(np.maxElixir, np.elixir + 2)
+  const elixirRegen = game.round >= 5 ? 4 : 2
+  if (np.hasStarted) np.elixir = Math.min(np.maxElixir, np.elixir + elixirRegen)
   else np.hasStarted = true
 
   // upkeep das cartas: reset de turno + passivas
