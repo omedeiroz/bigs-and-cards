@@ -5,7 +5,15 @@ function authMiddleware(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Token não fornecido' })
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET)
+    const payload = jwt.verify(token, process.env.JWT_SECRET)
+    req.user = payload
+    // Sessão deslizante: renova o prazo de 3h a cada requisição autenticada
+    const fresh = jwt.sign(
+      { id: payload.id, username: payload.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '3h' }
+    )
+    res.set('x-refresh-token', fresh)
     next()
   } catch {
     res.status(401).json({ error: 'Token inválido' })

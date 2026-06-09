@@ -12,7 +12,7 @@ const allowedOrigins = [
   'http://localhost:5175',
   process.env.FRONTEND_URL,
 ].filter(Boolean)
-app.use(cors({ origin: allowedOrigins }))
+app.use(cors({ origin: allowedOrigins, exposedHeaders: ['x-refresh-token'] }))
 app.use(express.json())
 
 app.use('/api/auth', require('./routes/auth'))
