@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bell, Swords, Trophy, Lock } from 'lucide-react'
+import { Bell, Swords, Trophy, Lock, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 import Sidebar from '../components/Sidebar'
@@ -34,7 +34,7 @@ function RankBadge({ rank, size = 'md' }) {
 
 export default function Home() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { onlineIds, joinQueue, rankedJustUnlocked, clearRankedUnlocked } = useSocket()
   const [friends, setFriends] = useState([])
   const [stats, setStats] = useState(null)
@@ -105,6 +105,9 @@ export default function Home() {
             </button>
             <button onClick={playCasual} className="btn btn-primary btn-lg">
               <Swords size={16} /> Jogar agora
+            </button>
+            <button onClick={logout} className="btn btn-ghost" title="Sair da conta">
+              <LogOut size={14} /> Sair
             </button>
           </div>
         </header>

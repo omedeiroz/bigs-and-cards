@@ -3,7 +3,7 @@ const ABILITIES = require('./abilities')
 
 const STARTING_HAND = 3
 const STARTING_ELIXIR = 5
-const ELIXIR_CAP = 10
+const ELIXIR_CAP = 15
 const PLAYER_HP = 20
 
 // Slots do tabuleiro aumentam com o avanço das rodadas
