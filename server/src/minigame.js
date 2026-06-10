@@ -1,15 +1,18 @@
 const TYPES = ['teclado', 'choro', 'reacao', 'clique', 'par_impar', 'mira', 'jokenpo']
 
-const SEQUENCES = [
-  ['Q','W','A','S'], ['E','R','D','F'], ['A','S','D','F'],
-  ['Q','E','A','D'], ['W','R','S','F'], ['Z','X','C','V'],
-]
+const KEY_POOL = 'QWERASDFZXCV'.split('')
 
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)] }
 
+function randomSeq(len) {
+  const s = []
+  for (let i = 0; i < len; i++) s.push(pick(KEY_POOL))
+  return s
+}
+
 function generatePayload(type) {
   switch (type) {
-    case 'teclado':   return { sequence: pick(SEQUENCES), durationMs: 8000 }
+    case 'teclado':   return { sequence: randomSeq(10), durationMs: 10000 }
     case 'choro':     return { targetPct: 48 + Math.floor(Math.random() * 30), durationMs: 8000 }
     case 'reacao':    return { delayMs: 1500 + Math.floor(Math.random() * 2500), durationMs: 10000 }
     case 'clique':    return { durationMs: 5000 }

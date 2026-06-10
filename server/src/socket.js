@@ -177,6 +177,9 @@ function resolveMinigame(roomId) {
   }
 
   const baseDamage = loserId ? dmg : 0
+  const reveal = state.type === 'par_impar'
+    ? { parities: { [aId]: state.payload.parityA, [bId]: state.payload.parityB } }
+    : null
   const resultPayload = {
     type: state.type,
     winner: winnerId,
@@ -185,6 +188,7 @@ function resolveMinigame(roomId) {
     damage: baseDamage + (pepaoBonus ? 1 : 0),
     pepaoBonus,
     values: { [aId]: valA, [bId]: valB },
+    reveal,
     elixirGrant: winnerId ? 2 : 1,
   }
   for (const pid of g.order) {

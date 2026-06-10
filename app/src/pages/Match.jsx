@@ -338,6 +338,18 @@ function MGKeySeq({ sequence, typed }) {
   )
 }
 
+function JShape({ kind, color, size = 40 }) {
+  if (kind === 'pedra') return (
+    <svg width={size} height={size} viewBox="0 0 64 64"><defs><radialGradient id={`rg${kind}${color}`} cx="0.35" cy="0.35"><stop offset="0" stopColor={color} stopOpacity="0.9"/><stop offset="1" stopColor={color} stopOpacity="0.3"/></radialGradient></defs><circle cx="32" cy="34" r="22" fill={`url(#rg${kind}${color})`} stroke={color} strokeWidth="2"/></svg>
+  )
+  if (kind === 'papel') return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5"><path d="M12 14 L44 14 L52 22 L52 52 L12 52 Z" fill={`${color}22`}/><path d="M44 14 L44 22 L52 22"/><line x1="18" y1="30" x2="46" y2="30" opacity="0.6"/><line x1="18" y1="38" x2="46" y2="38" opacity="0.6"/></svg>
+  )
+  return (
+    <svg width={size} height={size} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"><circle cx="18" cy="46" r="8" fill={`${color}22`}/><circle cx="46" cy="46" r="8" fill={`${color}22`}/><line x1="24" y1="40" x2="50" y2="14"/><line x1="40" y1="40" x2="14" y2="14"/></svg>
+  )
+}
+
 function MGPlay({ type, payload, onSubmit, submitted }) {
   const { useEffect: ue, useRef: ur, useState: us } = { useEffect, useRef, useState }
   const accent = MG_META[type]?.accent || 'var(--gold)'
@@ -558,7 +570,7 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
       // Move target smoothly
       let t = 0
       function frame() {
-        t += 0.02
+        t += 0.045
         const x = 20 + 60 * (0.5 + 0.5 * Math.sin(t * 1.7))
         const y = 20 + 60 * (0.5 + 0.5 * Math.cos(t * 1.3))
         posRef.current = { x, y }
@@ -604,17 +616,6 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
   if (type === 'jokenpo') {
     const [pick, setPick] = us(null)
     const opts = ['pedra','papel','tesoura']
-    function JShape({ kind, color }) {
-      if (kind === 'pedra') return (
-        <svg width={40} height={40} viewBox="0 0 64 64"><defs><radialGradient id={`rg${kind}`} cx="0.35" cy="0.35"><stop offset="0" stopColor={color} stopOpacity="0.9"/><stop offset="1" stopColor={color} stopOpacity="0.3"/></radialGradient></defs><circle cx="32" cy="34" r="22" fill={`url(#rg${kind})`} stroke={color} strokeWidth="2"/></svg>
-      )
-      if (kind === 'papel') return (
-        <svg width={40} height={40} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5"><path d="M12 14 L44 14 L52 22 L52 52 L12 52 Z" fill={`${color}22`}/><path d="M44 14 L44 22 L52 22"/><line x1="18" y1="30" x2="46" y2="30" opacity="0.6"/><line x1="18" y1="38" x2="46" y2="38" opacity="0.6"/></svg>
-      )
-      return (
-        <svg width={40} height={40} viewBox="0 0 64 64" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"><circle cx="18" cy="46" r="8" fill={`${color}22`}/><circle cx="46" cy="46" r="8" fill={`${color}22`}/><line x1="24" y1="40" x2="50" y2="14"/><line x1="40" y1="40" x2="14" y2="14"/></svg>
-      )
-    }
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
         <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-3)' }}>PEDRA PAPEL TESOURA · ESCOLHA E CONFIRME</div>
@@ -715,9 +716,82 @@ function MinigameConfirm({ data, socket, roomId }) {
   )
 }
 
+// Revela o que cada jogador jogou (par/ímpar, jokenpo) antes da tela de dano
+function RevealStage({ type, result, myId, me, opponent, accent }) {
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setShown(true), 1000)
+    return () => clearTimeout(t)
+  }, [])
+
+  const myVal = result.values?.[myId]
+  const oppVal = result.values?.[opponent?.id]
+  const iWon = result.winner === myId
+  const oppWon = result.winner === opponent?.id
+
+  function Pane({ who, sub, color, won, children }) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.16em', color }}>{who}</div>
+        <div style={{
+          width: 170, height: 210, borderRadius: 16,
+          border: `2px solid ${shown && won ? 'var(--emerald)' : color}`,
+          background: 'var(--surface-2)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10,
+          boxShadow: shown ? `0 0 36px ${won ? 'rgba(138,226,52,0.5)' : color + '44'}` : 'none',
+          transform: shown ? 'scale(1)' : 'scale(0.9)',
+          transition: 'all 0.45s var(--ease-out)',
+        }}>
+          {shown ? children : <span className="display" style={{ fontSize: 90, color: 'var(--ink-4)' }}>?</span>}
+        </div>
+        <div className="mono" style={{ fontSize: 9, letterSpacing: '0.14em', color: shown && won ? 'var(--emerald)' : 'var(--ink-4)', minHeight: 12 }}>
+          {shown ? (won ? `${sub} · VENCEU` : sub) : '...'}
+        </div>
+      </div>
+    )
+  }
+
+  let myContent = null, oppContent = null, center = null
+  if (type === 'jokenpo') {
+    const lbl = p => (p || '—').toUpperCase()
+    myContent = <><JShape kind={myVal?.pick} color={accent} size={72} /><span className="display" style={{ fontSize: 20 }}>{lbl(myVal?.pick)}</span></>
+    oppContent = <><JShape kind={oppVal?.pick} color="var(--crimson)" size={72} /><span className="display" style={{ fontSize: 20 }}>{lbl(oppVal?.pick)}</span></>
+  } else if (type === 'par_impar') {
+    const myPar = result.reveal?.parities?.[myId]
+    const oppPar = result.reveal?.parities?.[opponent?.id]
+    const sum = (myVal?.number ?? 0) + (oppVal?.number ?? 0)
+    const finalPar = sum % 2 === 0 ? 'PAR' : 'ÍMPAR'
+    myContent = <><span className="display" style={{ fontSize: 72, color: accent, lineHeight: 1 }}>{myVal?.number ?? '—'}</span><span className="mono" style={{ fontSize: 11, letterSpacing: '0.16em', color: accent }}>{(myPar || '').toUpperCase()}</span></>
+    oppContent = <><span className="display" style={{ fontSize: 72, color: 'var(--crimson)', lineHeight: 1 }}>{oppVal?.number ?? '—'}</span><span className="mono" style={{ fontSize: 11, letterSpacing: '0.16em', color: 'var(--crimson)' }}>{(oppPar || '').toUpperCase()}</span></>
+    center = shown ? (
+      <div style={{ textAlign: 'center' }}>
+        <div className="display" style={{ fontSize: 40, color: 'var(--ink-1)', lineHeight: 1 }}>{sum}</div>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.16em', color: 'var(--gold)', marginTop: 4 }}>SOMA = {finalPar}</div>
+      </div>
+    ) : null
+  }
+
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div className="eyebrow" style={{ color: accent, marginBottom: 24 }}>◆ O QUE CADA UM JOGOU ◆</div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
+        <Pane who={`@${me?.username}`} sub="VOCÊ" color="var(--gold)" won={iWon}>{myContent}</Pane>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, minWidth: 90 }}>
+          <div className="display" style={{ fontSize: 32, color: 'var(--ink-4)' }}>VS</div>
+          {center}
+        </div>
+        <Pane who={`@${opponent?.username}`} sub="OPONENTE" color="var(--crimson)" won={oppWon}>{oppContent}</Pane>
+      </div>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '0.18em', color: 'var(--ink-4)', marginTop: 26 }}>
+        {shown ? 'apurando o resultado...' : 'revelando...'}
+      </div>
+    </div>
+  )
+}
+
 function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) {
   const [phase, setPhase] = useState('ready')
-  const [countdown, setCountdown] = useState(5)
+  const [countdown, setCountdown] = useState(data.type === 'teclado' ? 1 : 5)
   const [result, setResult] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const meta = MG_META[data.type] || MG_META.teclado
@@ -739,8 +813,15 @@ function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) 
   useEffect(() => {
     function onResult(res) {
       setResult(res)
-      setPhase('result')
-      setTimeout(onClose, 4500)
+      const versus = res.type === 'par_impar' || res.type === 'jokenpo'
+      if (versus) {
+        setPhase('reveal')
+        setTimeout(() => setPhase('result'), 3000)
+        setTimeout(onClose, 3000 + 4500)
+      } else {
+        setPhase('result')
+        setTimeout(onClose, 4500)
+      }
     }
     socket.on('minigame:result', onResult)
     return () => socket.off('minigame:result', onResult)
@@ -810,6 +891,10 @@ function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) 
           </div>
         )}
 
+        {phase === 'reveal' && result && (
+          <RevealStage type={result.type} result={result} myId={myId} me={me} opponent={opponent} accent={accent} />
+        )}
+
         {phase === 'result' && result && (
           <div style={{ textAlign: 'center' }}>
             <div className="eyebrow" style={{ color: isDraw ? 'var(--gold)' : iWon ? 'var(--emerald)' : 'var(--crimson)', marginBottom: 12 }}>◆ MINIGAME ENCERRADO ◆</div>
@@ -818,7 +903,7 @@ function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) 
             </div>
             {!isDraw && result.damage > 0 && (
               <div style={{ fontSize: 16, color: 'var(--ink-2)', marginBottom: 10 }}>
-                {iWon ? `${opponent?.username} leva ${result.damage} de dano` : `Você levou ${result.damage} de dano`}
+                {iWon ? `${opponent?.username} leva ${result.damage} de dano verdadeiro` : `Você levou ${result.damage} de dano verdadeiro`}
               </div>
             )}
             <div style={{ fontSize: 14, color: 'var(--purple)', marginBottom: 18, fontWeight: 600 }}>
