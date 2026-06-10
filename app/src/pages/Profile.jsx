@@ -18,13 +18,17 @@ const RANK_COLORS = {
 const RARITY_COLORS = { comum: 'var(--ink-3)', raro: 'var(--sapphire)', épico: 'var(--purple)', lendário: 'var(--gold)' }
 
 export default function Profile() {
-  const { user, logout } = useAuth()
+  const { user, logout, login } = useAuth()
   const navigate = useNavigate()
   const { rankUpdate, clearRankUpdate } = useSocket()
   const [stats, setStats] = useState(null)
   const [matches, setMatches] = useState([])
   const [pickingCard, setPickingCard] = useState(false)
   const [savingCard, setSavingCard] = useState(false)
+  const [editingNick, setEditingNick] = useState(false)
+  const [nickValue, setNickValue] = useState('')
+  const [nickError, setNickError] = useState('')
+  const [savingNick, setSavingNick] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('bigs-token')
@@ -58,6 +62,28 @@ export default function Profile() {
 
   function handleLogout() { logout(); navigate('/login') }
 
+  async function saveNick() {
+    const name = nickValue.trim()
+    if (name === user?.username) { setEditingNick(false); return }
+    setSavingNick(true); setNickError('')
+    const token = localStorage.getItem('bigs-token')
+    try {
+      const res = await fetch('/api/users/me/username', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setNickError(data.error || 'Erro ao trocar o nick'); setSavingNick(false); return }
+      login(data.user, data.token)  // atualiza usuário + token (username vive no JWT)
+      setStats(prev => prev ? { ...prev, username: data.user.username } : prev)
+      setEditingNick(false)
+    } catch {
+      setNickError('Erro de conexão')
+    }
+    setSavingNick(false)
+  }
+
   const rank = stats?.rank
   const rc = rank ? (RANK_COLORS[rank.tier] || RANK_COLORS['Dev do Itaú']) : null
   const winRate = stats && stats.matchesPlayed > 0 ? Math.round((stats.wins / stats.matchesPlayed) * 100) : null
@@ -79,7 +105,33 @@ export default function Profile() {
             </div>
             <div>
               <div className="eyebrow" style={{ color: 'var(--gold)' }}>► PERFIL</div>
-              <h1 className="display" style={{ fontSize: 64, lineHeight: 0.95, marginTop: 4 }}>{user?.username}</h1>
+              {editingNick ? (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      className="input"
+                      value={nickValue}
+                      autoFocus
+                      maxLength={20}
+                      onChange={e => setNickValue(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveNick(); if (e.key === 'Escape') { setEditingNick(false); setNickError('') } }}
+                      style={{ fontSize: 22, maxWidth: 280 }}
+                    />
+                    <button onClick={saveNick} disabled={savingNick} className="btn btn-primary btn-sm">
+                      <Check size={12} /> Salvar
+                    </button>
+                    <button onClick={() => { setEditingNick(false); setNickError('') }} className="btn btn-ghost btn-sm">Cancelar</button>
+                  </div>
+                  {nickError && <div className="mono" style={{ fontSize: 10, color: 'var(--crimson)', marginTop: 6, letterSpacing: '0.1em' }}>{nickError}</div>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+                  <h1 className="display" style={{ fontSize: 64, lineHeight: 0.95 }}>{user?.username}</h1>
+                  <button onClick={() => { setNickValue(user?.username || ''); setNickError(''); setEditingNick(true) }} className="btn btn-ghost btn-sm" title="Trocar nick">
+                    <Pencil size={12} /> Nick
+                  </button>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span className="mono" style={{ fontSize: 11, color: 'var(--ink-3)', letterSpacing: '0.14em' }}>{user?.email}</span>
                 {stats?.rankedUnlocked && rank && (

@@ -245,7 +245,6 @@ function HandCard({ cardId, playable, onPlay, onHover, onLeave }) {
   return (
     <button
       onClick={playable ? onPlay : undefined}
-      disabled={!playable}
       onMouseEnter={e => onHover?.(data, e.currentTarget.getBoundingClientRect(), null)}
       onMouseLeave={onLeave}
       style={{
@@ -381,7 +380,7 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
     const dirRef = ur(1)
     ue(() => {
       if (stopped || submitted) return
-      const speed = 0.35
+      const speed = 0.85
       function frame() {
         pctRef.current += speed * dirRef.current
         if (pctRef.current >= 100) { pctRef.current = 100; dirRef.current = -1 }
@@ -513,23 +512,19 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
 
   // PAR OU ÍMPAR
   if (type === 'par_impar') {
-    const [choice, setChoice] = us(null)
     const [num, setNum] = us(null)
     const done = submitted
+    const myParity = (payload.yourParity || '').toUpperCase()
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-        <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-3)' }}>APOSTA PAR/ÍMPAR · ESCOLHE UM NÚMERO (1-10)</div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          {['par','impar'].map(c => (
-            <button key={c} onClick={() => !done && setChoice(c)} style={{
-              padding: '10px 28px', borderRadius: 10,
-              background: choice === c ? accent : 'var(--surface-2)',
-              border: `2px solid ${choice === c ? accent : 'var(--line-2)'}`,
-              fontFamily: 'var(--font-display)', fontSize: 20,
-              color: choice === c ? 'var(--bg)' : 'var(--ink-1)',
-              cursor: done ? 'default' : 'pointer',
-            }}>{c.toUpperCase()}</button>
-          ))}
+        <div className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-3)' }}>
+          VOCÊ É <span style={{ color: accent, fontWeight: 700 }}>{myParity}</span> · ESCOLHE UM NÚMERO (1-10) · A SOMA DECIDE
+        </div>
+        <div style={{
+          padding: '8px 24px', borderRadius: 10, border: `2px solid ${accent}`,
+          background: 'var(--surface-2)', fontFamily: 'var(--font-display)', fontSize: 28, color: accent,
+        }}>
+          {myParity}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 52px)', gap: 8 }}>
           {[1,2,3,4,5,6,7,8,9,10].map(n => (
@@ -543,7 +538,7 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
             }}>{n}</button>
           ))}
         </div>
-        <button onClick={() => (choice && num) && onSubmit({ choice, number: num })} disabled={!choice || !num || done} className="btn btn-primary btn-lg" style={{ opacity: (!choice || !num || done) ? 0.5 : 1 }}>
+        <button onClick={() => num && onSubmit({ number: num })} disabled={!num || done} className="btn btn-primary btn-lg" style={{ opacity: (!num || done) ? 0.5 : 1 }}>
           {done ? 'Aguardando oponente...' : 'Confirmar'}
         </button>
       </div>
@@ -563,7 +558,7 @@ function MGPlay({ type, payload, onSubmit, submitted }) {
       // Move target smoothly
       let t = 0
       function frame() {
-        t += 0.008
+        t += 0.02
         const x = 20 + 60 * (0.5 + 0.5 * Math.sin(t * 1.7))
         const y = 20 + 60 * (0.5 + 0.5 * Math.cos(t * 1.3))
         posRef.current = { x, y }
@@ -794,7 +789,7 @@ function MinigameOverlay({ data, socket, roomId, myId, me, opponent, onClose }) 
               {data.type === 'choro'     && `Para a barra na zona dourada (${data.payload.targetPct}%) — mais perto vence`}
               {data.type === 'reacao'    && 'Quando ficar verde — aperta o mais rápido possível'}
               {data.type === 'clique'    && '5 segundos — mais cliques vence'}
-              {data.type === 'par_impar' && 'Aposta par/ímpar e escolhe um número — soma decide'}
+              {data.type === 'par_impar' && `Você é ${(data.payload?.yourParity || '').toUpperCase()} — escolhe um número, a soma decide`}
               {data.type === 'mira'      && 'Alvo em movimento — 3 hits vence'}
               {data.type === 'jokenpo'   && 'Pedra, papel ou tesoura — reveal simultâneo'}
             </div>

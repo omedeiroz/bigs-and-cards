@@ -160,7 +160,7 @@ export default function Home() {
                                 {stats.rank.ptsInDiv}/100 pts na divisão
                               </span>
                               <span className="mono" style={{ fontSize: 9, letterSpacing: '0.12em', color: 'var(--ink-4)' }}>
-                                {stats.rank.division === 'I' ? 'próx: subida de tier' : `próx: ${stats.rank.tier} ${['', 'IV', 'III', 'II', 'I'][['I','II','III','IV'].indexOf(stats.rank.division)]}`}
+                                {stats.rank.division === 'I' ? 'próx: subida de tier' : `próx: ${stats.rank.tier} ${['IV','III','II','I'][['IV','III','II','I'].indexOf(stats.rank.division) + 1]}`}
                               </span>
                             </div>
                             <div style={{ height: 4, borderRadius: 2, background: 'var(--surface-3)', overflow: 'hidden' }}>

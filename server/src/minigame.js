@@ -57,21 +57,16 @@ function evaluate(type, payload, valA, valB) {
       if (ca === cb) return null
       return ca > cb ? 'a' : 'b'
     }
-    case 'blefe': {
-      const na = valA?.number ?? 0
-      const nb = valB?.number ?? 0
-      if (na === nb) return null
-      return na > nb ? 'a' : 'b'
-    }
     case 'par_impar': {
-      const na = valA?.number ?? 1
-      const nb = valB?.number ?? 1
-      const parity = (na + nb) % 2 === 0 ? 'par' : 'impar'
-      const aWins = valA?.choice === parity
-      const bWins = valB?.choice === parity
-      if (aWins && !bWins) return 'a'
-      if (bWins && !aWins) return 'b'
-      return null
+      // O servidor já sorteou as paridades (payload.parityA / parityB).
+      // Cada jogador só escolhe um número; a soma decide.
+      const aIn = valA?.number != null
+      const bIn = valB?.number != null
+      if (!aIn && !bIn) return null
+      if (!aIn) return 'b'
+      if (!bIn) return 'a'
+      const parity = (valA.number + valB.number) % 2 === 0 ? 'par' : 'impar'
+      return payload.parityA === parity ? 'a' : 'b'
     }
     case 'mira': {
       const ha = valA?.hits ?? 0

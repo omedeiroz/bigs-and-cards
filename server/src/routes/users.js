@@ -1,4 +1,5 @@
 const router = require('express').Router()
+const jwt = require('jsonwebtoken')
 const { PrismaClient } = require('@prisma/client')
 const authMiddleware = require('../middleware/auth')
 const { getRank } = require('../rank')
@@ -35,6 +36,36 @@ router.put('/me', authMiddleware, async (req, res) => {
       select: { id: true, mainCardId: true }
     })
     res.json(user)
+  } catch {
+    res.status(500).json({ error: 'Erro interno' })
+  }
+})
+
+router.put('/me/username', authMiddleware, async (req, res) => {
+  const name = (req.body.username || '').trim()
+  if (name.length < 3 || name.length > 20)
+    return res.status(400).json({ error: 'O nick precisa ter entre 3 e 20 caracteres' })
+  if (!/^[a-zA-Z0-9_]+$/.test(name))
+    return res.status(400).json({ error: 'Use apenas letras, números e _' })
+  try {
+    const taken = await prisma.user.findFirst({
+      where: { username: { equals: name, mode: 'insensitive' }, NOT: { id: req.user.id } },
+      select: { id: true }
+    })
+    if (taken) return res.status(409).json({ error: 'Esse nick já está em uso' })
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { username: name },
+      select: { id: true, username: true, email: true }
+    })
+    // Reemite o token porque o username vive dentro dele
+    const token = jwt.sign(
+      { id: user.id, username: user.username },
+      process.env.JWT_SECRET,
+      { expiresIn: '3h' }
+    )
+    res.json({ user, token })
   } catch {
     res.status(500).json({ error: 'Erro interno' })
   }
@@ -87,13 +118,38 @@ router.get('/matches', authMiddleware, async (req, res) => {
 
 router.get('/leaderboard', authMiddleware, async (req, res) => {
   try {
+    // Todos os jogadores aparecem — mesmo quem ainda não desbloqueou ranqueada
     const players = await prisma.user.findMany({
-      where: { rankedUnlocked: true },
-      select: { id: true, username: true, rankPoints: true, wins: true, losses: true },
+      select: { id: true, username: true, rankPoints: true },
       orderBy: { rankPoints: 'desc' },
-      take: 50
+      take: 100
     })
-    res.json(players.map((p, i) => ({ ...p, position: i + 1, rank: getRank(p.rankPoints) })))
+
+    // V/D contam SÓ partidas ranqueadas (apuradas a partir da tabela Match)
+    const rankedMatches = await prisma.match.findMany({
+      where: { matchType: 'ranked' },
+      select: { playerAId: true, playerBId: true, winnerId: true }
+    })
+    const tally = {}
+    const bump = (uid, key) => {
+      if (uid == null) return
+      if (!tally[uid]) tally[uid] = { wins: 0, losses: 0 }
+      tally[uid][key]++
+    }
+    for (const m of rankedMatches) {
+      if (m.winnerId == null) continue
+      const loserId = m.playerAId === m.winnerId ? m.playerBId : m.playerAId
+      bump(m.winnerId, 'wins')
+      bump(loserId, 'losses')
+    }
+
+    res.json(players.map((p, i) => ({
+      ...p,
+      wins: tally[p.id]?.wins ?? 0,
+      losses: tally[p.id]?.losses ?? 0,
+      position: i + 1,
+      rank: getRank(p.rankPoints),
+    })))
   } catch {
     res.status(500).json({ error: 'Erro interno' })
   }

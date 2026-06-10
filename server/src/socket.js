@@ -75,6 +75,13 @@ function startMinigame(roomId, forcedType, ctx = {}) {
   const type = forcedType || TYPES[Math.floor(Math.random() * TYPES.length)]
   const payload = generatePayload(type)
 
+  // Par ou ímpar: o servidor sorteia quem é "par" e quem é "ímpar"
+  if (type === 'par_impar') {
+    const aIsPar = Math.random() < 0.5
+    payload.parityA = aIsPar ? 'par' : 'impar'
+    payload.parityB = aIsPar ? 'impar' : 'par'
+  }
+
   const state = {
     type, payload,
     order: g.order.slice(),
@@ -105,7 +112,12 @@ function launchMinigame(roomId) {
   if (!g) return
 
   for (const pid of state.order) {
-    emitToUser(pid, 'minigame:start', { type: state.type, payload: state.payload, round: g.round })
+    let payload = state.payload
+    if (state.type === 'par_impar') {
+      const yourParity = pid === state.order[0] ? state.payload.parityA : state.payload.parityB
+      payload = { ...state.payload, yourParity }
+    }
+    emitToUser(pid, 'minigame:start', { type: state.type, payload, round: g.round })
   }
 
   state.timer = setTimeout(() => resolveMinigame(roomId), state.payload.durationMs + 4000)

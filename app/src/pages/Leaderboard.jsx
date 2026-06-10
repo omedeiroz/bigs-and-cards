@@ -96,7 +96,7 @@ export default function Leaderboard() {
           <div>
             <div className="eyebrow" style={{ color: 'var(--gold)' }}>► RANQUEADA GLOBAL</div>
             <h1 className="display" style={{ fontSize: 56, marginTop: 8, lineHeight: 1 }}>PLACAR <span style={{ color: 'var(--gold)' }}>BIG FANFAS</span></h1>
-            <p style={{ fontSize: 14, color: 'var(--ink-3)', marginTop: 6 }}>Os 50 melhores do servidor. Só quem desbloqueou ranqueada aparece aqui.</p>
+            <p style={{ fontSize: 14, color: 'var(--ink-3)', marginTop: 6 }}>Todos os jogadores do servidor, ordenados por pontos. Vitórias e derrotas contam só ranqueada.</p>
           </div>
         </header>
 
