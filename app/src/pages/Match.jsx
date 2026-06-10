@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { X, Sword, Shield, Heart, Layers, Crosshair, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
-import { cardById } from '../data/cards'
+import { cardById, COUNTERS, COUNTERED_BY, DUO_PARTNERS } from '../data/cards'
 import { CostGem } from '../components/Card'
 
-const PREVIEW_W = 280
-const PREVIEW_H = 440
+const PREVIEW_W = 240
+const PREVIEW_H = 220
 
 function StatChip({ icon: Icon, value, color }) {
   return (
@@ -26,6 +26,25 @@ function Section({ label, color, text }) {
     </div>
   )
 }
+
+// Linha compacta de relação (duo/counter) com chips de efeito tipo "+1 ATK", "Cancela mercado"
+function FxRow({ tag, name, c, fx }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span className="mono" style={{ fontSize: 8, letterSpacing: '0.12em', color: c.text, fontWeight: 700 }}>{tag}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-1)' }}>{name}</span>
+      {(fx || []).map((f, i) => (
+        <span key={i} className="mono" style={{
+          fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+          background: c.bg, border: `1px solid ${c.border}`, color: c.text,
+        }}>{f}</span>
+      ))}
+    </div>
+  )
+}
+
+const FX_DUO = { text: 'var(--mint)', bg: 'rgba(84,224,176,0.15)', border: 'rgba(84,224,176,0.4)' }
+const FX_COUNTER = { text: 'var(--crimson)', bg: 'rgba(255,61,90,0.15)', border: 'rgba(255,61,90,0.4)' }
 
 function HPRing({ hp, hpMax, size = 56, color = 'var(--sapphire)' }) {
   const r = size / 2 - 4
@@ -114,64 +133,101 @@ function HoverCard({ data, live, anchor }) {
 
   const atk = live?.atk ?? data.atk
   const def = live?.def ?? data.def
-  const hp = live?.hp ?? data.hp
+  const hp  = live?.hp  ?? data.hp
   const maxHp = live?.maxHp ?? data.hp
 
   return (
     <div style={{
       position: 'fixed', top, left, width: PREVIEW_W,
       background: 'var(--bg-2)', border: `2px solid ${data.accent}`,
-      borderRadius: 12, padding: 12, zIndex: 100,
-      boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
+      borderRadius: 10, padding: 10, zIndex: 100,
+      boxShadow: '0 8px 28px rgba(0,0,0,0.75)',
       pointerEvents: 'none',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <CostGem cost={data.cost} size={32} />
+      {/* header: custo + nome + stats ao lado */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <CostGem cost={data.cost} size={26} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="display" style={{ fontSize: 22, lineHeight: 1 }}>{data.name}</div>
-          <div className="mono" style={{ fontSize: 9, letterSpacing: '0.14em', color: data.accent, textTransform: 'uppercase', marginTop: 2 }}>▸ {data.tagline}</div>
+          <div className="display" style={{ fontSize: 17, lineHeight: 1 }}>{data.name}</div>
+          <div className="mono" style={{ fontSize: 8, letterSpacing: '0.12em', color: data.accent, textTransform: 'uppercase', marginTop: 1 }}>▸ {data.tagline}</div>
         </div>
-      </div>
-
-      <div style={{ marginTop: 10, height: 130, borderRadius: 8, overflow: 'hidden', position: 'relative', background: 'var(--bg)' }}>
-        <img src={`/cards/${data.id}.png`} alt={data.name} onError={e => { e.currentTarget.style.display = 'none' }}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.92) 100%)' }} />
-        <div style={{ position: 'absolute', bottom: 6, left: 10, right: 10, display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end', flexShrink: 0 }}>
           <StatChip icon={Sword} value={atk} color="#ff6b80" />
           <StatChip icon={Shield} value={def} color="#7ff0c8" />
           <StatChip icon={Heart} value={`${hp}/${maxHp}`} color="#9cc4ff" />
         </div>
       </div>
 
-      <Section label="PASSIVA" color="var(--gold)" text={data.passive} />
+      {/* passiva */}
+      {data.passive && (
+        <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--line-1)' }}>
+          <div className="mono" style={{ fontSize: 7, letterSpacing: '0.18em', color: 'var(--gold)', fontWeight: 700 }}>PASSIVA</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 2, lineHeight: 1.35 }}>{data.passive}</div>
+        </div>
+      )}
+
+      {/* especial */}
       {data.special && (
-        <Section
-          label={`ESPECIAL · ${data.special.name?.toUpperCase()} (${data.special.cost})`}
-          color="var(--purple)"
-          text={data.special.desc}
-        />
+        <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--line-1)' }}>
+          <div className="mono" style={{ fontSize: 7, letterSpacing: '0.18em', color: 'var(--purple)', fontWeight: 700 }}>
+            {data.special.name?.toUpperCase()} · {data.special.cost} ⬡
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--ink-2)', marginTop: 2, lineHeight: 1.35 }}>{data.special.desc}</div>
+        </div>
       )}
-      {data.counter && (
-        <Section
-          label={`COUNTER · ${data.counter.name?.toUpperCase()}`}
-          color="var(--crimson)"
-          text={data.counter.desc}
-        />
+
+      {/* duo / counter chips */}
+      {(data.counter || (data.duo && data.duo.length > 0)) && (
+        <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid var(--line-1)', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {(data.duo || []).map((d, i) => (
+            <FxRow key={'duo' + i} tag="DUO" name={d.name} c={FX_DUO} fx={d.fx} />
+          ))}
+          {data.counter && (
+            <FxRow tag="VS" name={data.counter.name} c={FX_COUNTER} fx={data.counter.fx} />
+          )}
+        </div>
       )}
-      {(data.duo || []).map((d, i) => (
-        <Section
-          key={i}
-          label={`DUO · ${d.name?.toUpperCase()}`}
-          color="var(--mint)"
-          text={d.desc}
-        />
-      ))}
     </div>
   )
 }
 
-function Minion({ m, selectable, selected, targetable, onClick, onHover, onLeave, innerRef, flashKey, flashColor, specialBtn }) {
+function SpecialBanner({ banner }) {
+  if (!banner) return null
+  const sideColor = banner.isMe ? 'var(--gold)' : 'var(--crimson)'
+  return (
+    <div style={{
+      position: 'fixed', top: 72, left: '50%',
+      zIndex: 55,
+      background: 'rgba(10,9,8,0.93)', backdropFilter: 'blur(20px)',
+      border: `1px solid ${banner.accent}`,
+      borderRadius: 10, padding: '9px 18px',
+      display: 'flex', alignItems: 'center', gap: 12,
+      boxShadow: `0 4px 28px ${banner.accent}55`,
+      animation: 'slideDown 0.28s ease-out',
+      pointerEvents: 'none',
+    }}>
+      <Sparkles size={17} color="var(--purple)" style={{ flexShrink: 0 }} />
+      <div>
+        <div className="mono" style={{ fontSize: 8, letterSpacing: '0.2em', color: sideColor, marginBottom: 2 }}>
+          {banner.isMe ? 'VOCÊ' : 'OPONENTE'} · ESPECIAL
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="display" style={{ fontSize: 15, color: 'var(--ink-1)' }}>{banner.cardName}</span>
+          <span style={{ color: 'var(--ink-4)', fontSize: 11 }}>·</span>
+          <span style={{ color: 'var(--purple)', fontSize: 13, fontWeight: 700 }}>{banner.specialName}</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const AURA = {
+  duo:         { c: 'var(--gold)',    glow: 'rgba(255,201,60,0.7)',  label: 'DUO' },
+  counters:    { c: 'var(--emerald)', glow: 'rgba(138,226,52,0.7)',  label: 'VANTAGEM' },
+  counteredby: { c: 'var(--crimson)', glow: 'rgba(255,61,90,0.7)',   label: 'PERIGO' },
+}
+
+function Minion({ m, selectable, selected, targetable, aura, onClick, onHover, onLeave, innerRef, flashKey, flashColor, specialBtn }) {
   const data = cardById(m.cardId) || {}
   const dim = m.summoned || m.hasAttacked
   const interactive = selectable || targetable
@@ -181,6 +237,11 @@ function Minion({ m, selectable, selected, targetable, onClick, onHover, onLeave
   else if (targetable) { border = 'var(--crimson)'; shadow = '0 0 10px rgba(255,61,90,0.6)' }
   else if (selectable) { shadow = '0 0 8px rgba(255,201,60,0.4)' }
   if (m.counterImmune) { border = 'var(--mint)'; shadow = '0 0 10px rgba(84,224,176,0.5)' }
+  const auraStyle = aura ? AURA[aura] : null
+  if (auraStyle && !selected && !targetable) {
+    border = auraStyle.c
+    shadow = `0 0 0 2px var(--bg), 0 0 16px ${auraStyle.glow}`
+  }
 
   return (
     <div
@@ -198,6 +259,16 @@ function Minion({ m, selectable, selected, targetable, onClick, onHover, onLeave
         animation: flashKey ? 'hitShake 0.35s ease-out' : 'none',
       }}
     >
+      {auraStyle && (
+        <div className="mono" style={{
+          position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', zIndex: 8,
+          background: auraStyle.c, color: 'var(--bg)', fontSize: 7, fontWeight: 800,
+          letterSpacing: '0.12em', padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap',
+          boxShadow: `0 0 10px ${auraStyle.glow}`,
+        }}>
+          {auraStyle.label}
+        </div>
+      )}
       <div className="display" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, color: data.accent || 'var(--ink-3)', opacity: 0.4 }}>
         {(data.name || '?')[0].toUpperCase()}
       </div>
@@ -220,7 +291,7 @@ function Minion({ m, selectable, selected, targetable, onClick, onHover, onLeave
       </div>
       {specialBtn && (
         <button
-          title={`Especial (${specialBtn.cost} elixir)`}
+          title={specialBtn.cooldown > 0 ? `Recarregando (${specialBtn.cooldown} turno(s))` : `Especial (${specialBtn.cost} elixir)`}
           onClick={e => { e.stopPropagation(); specialBtn.onClick() }}
           disabled={!specialBtn.enabled}
           style={{
@@ -231,9 +302,10 @@ function Minion({ m, selectable, selected, targetable, onClick, onHover, onLeave
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: specialBtn.enabled ? 'pointer' : 'not-allowed',
             padding: 0, boxShadow: specialBtn.active ? '0 0 0 2px var(--purple), 0 0 10px var(--purple)' : 'none',
+            fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
           }}
         >
-          <Sparkles size={11} />
+          {specialBtn.cooldown > 0 ? specialBtn.cooldown : <Sparkles size={11} />}
         </button>
       )}
     </div>
@@ -990,11 +1062,13 @@ export default function Match() {
   const [log, setLog] = useState([])                  // [{ id, kind, text }]
   const [handOpen, setHandOpen] = useState(true)
   const [minigame, setMinigame] = useState(null)  // { type, payload, round }
+  const [specialBanner, setSpecialBanner] = useState(null)
   const matchStartRef = useRef(Date.now())
   const minionRefs = useRef(new Map())
   const oppFaceRef = useRef(null)
   const myFaceRef = useRef(null)
   const nonceRef = useRef(1)
+  const specialBannerTimer = useRef(null)
 
   function registerMinionRef(uid) {
     return (el) => {
@@ -1074,6 +1148,14 @@ export default function Match() {
         }
         const data = cardById(ev.cardId)
         pushLog(mineActed ? 'me' : 'opp', `usou ${data?.special?.name || 'especial'}${ev.dmgToTarget ? ` (-${ev.dmgToTarget})` : ''}`)
+        if (specialBannerTimer.current) clearTimeout(specialBannerTimer.current)
+        setSpecialBanner({
+          isMe: mineActed,
+          cardName: data?.name || ev.cardId,
+          specialName: data?.special?.name || 'Especial',
+          accent: data?.accent || 'var(--purple)',
+        })
+        specialBannerTimer.current = setTimeout(() => setSpecialBanner(null), 3000)
       }
     }
 
@@ -1188,16 +1270,32 @@ export default function Match() {
   const aimingEnemy = specialAim?.targetType === 'enemyCard'
   const aimingAlly  = specialAim?.targetType === 'allyCard'
 
-  const onCardHover = (data, anchor, m) => setHover({ data, anchor, live: m })
+  const onCardHover = (data, anchor, m, side = 'me') => setHover({ data, anchor, live: m, side })
   const onCardLeave = () => setHover(null)
+
+  // Auras: ao passar o mouse numa carta (e sem estar mirando), realça relações.
+  // Duo = mesmo lado (amarelo). Counter = lado oposto (verde = você vence, vermelho = perde).
+  const auraSrc = (!aiming && !specialAim && hover && hover.side === 'me') ? hover.data?.id : null
+  function auraFor(cardId, side) {
+    if (!auraSrc) return null
+    if (side === 'me') {
+      if (cardId !== auraSrc && DUO_PARTNERS[auraSrc]?.includes(cardId)) return 'duo'
+    } else {
+      if (COUNTERS[auraSrc]?.includes(cardId)) return 'counters'       // você vence
+      if (COUNTERED_BY[auraSrc]?.includes(cardId)) return 'counteredby' // perde pra ela
+    }
+    return null
+  }
 
   function specialBtnFor(m) {
     if (!isMyTurn || ended) return null
     if (!m.specialImplemented) return null
-    const enabled = !m.specialUsed && me.elixir >= (m.specialCost ?? 99) && !aiming
+    const ready = m.specialReady !== false
+    const enabled = ready && me.elixir >= (m.specialCost ?? 99) && !aiming
     return {
       cost: m.specialCost,
       enabled,
+      cooldown: m.specialCooldown || 0,
       active: specialAim?.sourceUid === m.uid,
       onClick: () => openSpecial(m),
     }
@@ -1232,11 +1330,12 @@ export default function Match() {
               return (
                 <Minion key={m.uid} m={m}
                   targetable={aiming || aimingEnemy}
+                  aura={auraFor(m.cardId, 'opp')}
                   onClick={() => {
                     if (aimingEnemy) doSpecial({ type: 'card', uid: m.uid })
                     else if (aiming) doAttack({ type: 'card', uid: m.uid })
                   }}
-                  onHover={onCardHover} onLeave={onCardLeave}
+                  onHover={(d, a, mm) => onCardHover(d, a, mm, 'opp')} onLeave={onCardLeave}
                   innerRef={registerMinionRef(m.uid)}
                   flashKey={flashes[m.uid]?.nonce}
                   flashColor={flashes[m.uid]?.color}
@@ -1262,11 +1361,12 @@ export default function Match() {
                   selectable={canAttackWith(m) && !specialAim}
                   selected={selected === m.uid}
                   targetable={aimingAlly}
+                  aura={auraFor(m.cardId, 'me')}
                   onClick={() => {
                     if (aimingAlly) doSpecial({ type: 'card', uid: m.uid })
                     else if (canAttackWith(m)) setSelected(selected === m.uid ? null : m.uid)
                   }}
-                  onHover={onCardHover} onLeave={onCardLeave}
+                  onHover={(d, a, mm) => onCardHover(d, a, mm, 'me')} onLeave={onCardLeave}
                   innerRef={registerMinionRef(m.uid)}
                   flashKey={flashes[m.uid]?.nonce}
                   flashColor={flashes[m.uid]?.color}
@@ -1314,7 +1414,7 @@ export default function Match() {
             const playable = isMyTurn && !ended && !me.cardPlayBlocked && me.elixir >= (data.cost ?? 99) && me.board.length < boardCap
             return (
               <HandCard key={i} cardId={cardId} playable={playable} onPlay={() => playCard(i)}
-                onHover={onCardHover} onLeave={onCardLeave} />
+                onHover={(d, a, mm) => onCardHover(d, a, mm, 'me')} onLeave={onCardLeave} />
             )
           })}
         </div>
@@ -1322,6 +1422,28 @@ export default function Match() {
 
       {/* log flutuante */}
       <GameLog log={log} />
+
+      {/* legenda das auras (aparece ao inspecionar uma carta) */}
+      {auraSrc && (
+        <div style={{
+          position: 'fixed', bottom: 16, left: 16, zIndex: 40,
+          background: 'rgba(10,9,8,0.82)', backdropFilter: 'blur(16px)',
+          border: '1px solid var(--line-1)', borderRadius: 8, padding: '10px 12px',
+          display: 'flex', flexDirection: 'column', gap: 6,
+        }}>
+          <div className="mono" style={{ fontSize: 9, letterSpacing: '0.2em', color: 'var(--ink-4)' }}>► RELAÇÕES</div>
+          {[
+            { c: 'var(--gold)',    t: 'DUO — combo no seu lado' },
+            { c: 'var(--emerald)', t: 'VANTAGEM — você countera' },
+            { c: 'var(--crimson)', t: 'PERIGO — countera você' },
+          ].map(l => (
+            <div key={l.t} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: l.c, boxShadow: `0 0 8px ${l.c}` }} />
+              <span className="mono" style={{ fontSize: 9, letterSpacing: '0.1em', color: 'var(--ink-2)' }}>{l.t}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {aiming && (
         <div style={{ position: 'absolute', bottom: 92, left: '50%', transform: 'translateX(-50%)', background: 'var(--crimson)', color: '#fff', padding: '8px 16px', borderRadius: 999, fontSize: 13, fontWeight: 700, zIndex: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1355,6 +1477,9 @@ export default function Match() {
           </div>
         </div>
       )}
+
+      {/* banner de especial */}
+      <SpecialBanner banner={specialBanner} />
 
       {/* hover preview */}
       {hover && <HoverCard data={hover.data} live={hover.live} anchor={hover.anchor} />}

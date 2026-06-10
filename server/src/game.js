@@ -492,7 +492,12 @@ function activateSpecial(roomId, userId, sourceUid, target) {
   const opp = game.players[oppId]
   const source = me.board.find(x => x.uid === sourceUid)
   if (!source) return { error: 'Carta inválida' }
-  if (source.specialUsed) return { error: 'Especial já usado nessa partida' }
+  // Pirula (All in) é a única 1x por partida; as outras têm recarga de 2 turnos
+  if (source.specialUsedRound != null) {
+    if (source.cardId === 'pirula') return { error: 'All in já foi usado nessa partida' }
+    const elapsed = game.round - source.specialUsedRound
+    if (elapsed < 2) return { error: `Especial recarregando (faltam ${2 - elapsed} turno(s))` }
+  }
 
   const handler = SPECIALS[source.cardId]
   if (!handler) return { error: 'Esta carta não tem especial implementado' }
@@ -506,7 +511,7 @@ function activateSpecial(roomId, userId, sourceUid, target) {
   me.elixir -= cost
   me.stats.specialsUsed++
   if (result?.event?.dmgToTarget) me.stats.damageDealt += result.event.dmgToTarget
-  if (source.cardId === 'pirula') source.specialUsed = true
+  source.specialUsedRound = game.round  // recarga de 2 turnos (Pirula = 1x por partida)
 
   const event = {
     type: 'special',
@@ -634,8 +639,18 @@ function publicMinion(game, ownerId, m, isMine) {
   if (isMine) {
     out.specialCost = specialCost(game, ownerId, m)
     out.specialTarget = SPECIAL_TARGETS[m.cardId] || null  // 'enemyCard' | 'allyCard' | null
-    out.specialUsed = !!m.specialUsed
     out.specialImplemented = !!SPECIALS[m.cardId]
+    // Recarga: Pirula é 1x por partida; as outras liberam após 2 turnos
+    let ready = true, cooldown = 0
+    if (m.specialUsedRound != null) {
+      if (m.cardId === 'pirula') ready = false
+      else {
+        const elapsed = game.round - m.specialUsedRound
+        if (elapsed < 2) { ready = false; cooldown = 2 - elapsed }
+      }
+    }
+    out.specialReady = ready
+    out.specialCooldown = cooldown
   }
   return out
 }

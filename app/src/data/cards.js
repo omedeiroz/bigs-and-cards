@@ -6,8 +6,8 @@ export const CARDS = [
     accent: '#FF7B3D',
     bio: 'Vai pra cima sem pensar. Cresce com o tempo.',
     passive: 'Ganha +1 ATK a cada 2 rodadas vivo (máx +2)',
-    counter: { name: 'Bigs', desc: 'perde 1 ATK e 1 DEF ao ser colocado depois dele' },
-    duo: [{ name: 'Pepao', desc: '+1 ATK e +1 DEF' }],
+    counter: { name: 'Bigs', desc: 'perde 1 ATK e 1 DEF ao ser colocado depois dele', fx: ['−1 ATK', '−1 DEF'] },
+    duo: [{ name: 'Pepao', desc: '+1 ATK e +1 DEF', fx: ['+1 ATK', '+1 DEF'] }],
     special: { name: 'Mãos de fogo', cost: 4, desc: 'Escolhe uma carta inimiga, perde 1 ATK até o fim da rodada. Se Gbzin já tem +1 ATK da passiva, vira -2 ATK.' },
   },
   {
@@ -17,8 +17,8 @@ export const CARDS = [
     accent: '#5DD3B6',
     bio: 'O caos com queda pra minigame. Sorte boa.',
     passive: '30% de chance de ativar minigame por ataque — vence = +1 dano',
-    counter: { name: 'Davi', desc: 'minigame automático, dono do Davi escolhe. Pepao vencer = +1 vida' },
-    duo: [{ name: 'Gbzin', desc: '+2 ATK / -1 DEF' }],
+    counter: { name: 'Davi', desc: 'minigame automático, dono do Davi escolhe. Pepao vencer = +1 vida', fx: ['minigame'] },
+    duo: [{ name: 'Gbzin', desc: '+2 ATK / -1 DEF', fx: ['+2 ATK', '−1 DEF'] }],
     special: { name: 'Pepão big head', cost: 3, desc: 'Provoca minigame à sua escolha — se vencer, adversário pula a próxima jogada de cartas.' },
   },
   {
@@ -28,8 +28,8 @@ export const CARDS = [
     accent: '#B17BFF',
     bio: 'O do mercado. Sorte aleatória, dano controlado.',
     passive: 'Mercado — 25% de chance no início de cada rodada de ganhar +1 ATK ou +1 DEF',
-    counter: { name: 'Pepao', desc: 'perde 1 DEF. Se Pepao tem Gbzin no duo, perde 1 DEF + 1 ATK' },
-    duo: [{ name: 'Rena', desc: '+1 DEF, mercado sobe pra 40%' }],
+    counter: { name: 'Pepao', desc: 'perde 1 DEF. Se Pepao tem Gbzin no duo, perde 1 DEF + 1 ATK', fx: ['−1 DEF'] },
+    duo: [{ name: 'Rena', desc: '+1 DEF, mercado sobe pra 40%', fx: ['+1 DEF', 'Mercado 40%'] }],
     special: { name: 'Camisa 10 mantiqueiras', cost: 4, desc: 'Se ATK do time supera DEF inimiga em 2+, +1 dano. Em 4+, +2 dano.' },
   },
   {
@@ -39,10 +39,10 @@ export const CARDS = [
     accent: '#6BA6FF',
     bio: 'Tanque. Devolve o que toma.',
     passive: 'Ao sofrer dano, 30% de chance de refletir 1 de dano pro atacante',
-    counter: { name: 'Pepao', desc: 'minigame auto, Davi escolhe. Pepao vencer = +1 vida' },
+    counter: { name: 'Pepao', desc: 'minigame auto, Davi escolhe. Pepao vencer = +1 vida', fx: ['minigame'] },
     duo: [
-      { name: 'Bigs', desc: '+1 ATK, especial vale 2 de dano' },
-      { name: 'Ian', desc: 'roubo do Ian sobe pra 50%, Davi fica imune' },
+      { name: 'Bigs', desc: '+1 ATK, especial vale 2 de dano', fx: ['+1 ATK'] },
+      { name: 'Ian', desc: 'roubo do Ian sobe pra 50%, Davi fica imune', fx: ['Roubo 50%', 'Imune'] },
     ],
     special: { name: 'Chama pra briga', cost: 3, desc: 'Provoca um jogador específico, forçando a próxima carta dele a enfrentar o Davi.' },
   },
@@ -53,10 +53,10 @@ export const CARDS = [
     accent: '#FFC93C',
     bio: 'O nome do jogo. Tanque-atacante.',
     passive: 'Com 2+ cartas inimigas no tabuleiro, ganha +1 ATK',
-    counter: { name: 'Gbzin', desc: 'Gbzin perde 1 ATK, Bigs ganha +1 DEF ao enfrentá-lo' },
+    counter: { name: 'Gbzin', desc: 'Gbzin perde 1 ATK, Bigs ganha +1 DEF ao enfrentá-lo', fx: ['+1 DEF'] },
     duo: [
-      { name: 'Davi', desc: '+1 DEF, regenera 1 vida por rodada' },
-      { name: 'Eric', desc: '+2 ATK, -2 DEF' },
+      { name: 'Davi', desc: '+1 DEF, regenera 1 vida por rodada', fx: ['+1 DEF', 'Regen 1'] },
+      { name: 'Eric', desc: '+2 ATK, -2 DEF', fx: ['+2 ATK', '−2 DEF'] },
     ],
     special: { name: 'Modo big', cost: 4, desc: 'Dobra o custo da próxima carta do adversário nessa rodada.' },
   },
@@ -67,8 +67,8 @@ export const CARDS = [
     accent: '#54E0B0',
     bio: 'Trapaça. Vive do elixir alheio.',
     passive: 'A cada rodada, 25% de chance de roubar 1 de elixir do adversário',
-    counter: { name: 'Hadez', desc: 'cancela o mercado, Hadez perde 1 ATK enquanto Ian tá no tabuleiro' },
-    duo: [{ name: 'Davi', desc: 'roubo sobe pra 50%, Davi imune' }],
+    counter: { name: 'Hadez', desc: 'cancela o mercado, Hadez perde 1 ATK enquanto Ian tá no tabuleiro', fx: ['Cancela mercado'] },
+    duo: [{ name: 'Davi', desc: 'roubo sobe pra 50%, Davi imune', fx: ['Roubo 50%'] }],
     special: { name: 'Calote', cost: 3, desc: 'Rouba 2 de elixir do adversário.' },
   },
   {
@@ -78,8 +78,8 @@ export const CARDS = [
     accent: '#FF3D5A',
     bio: 'Cresce contra os fortes. Inverte tudo.',
     passive: 'Contra carta com ATK maior, ganha +1 ATK nessa batalha',
-    counter: { name: 'Pirula', desc: 'mútuo — antes: Pirula nasce -1 ATK; depois: Eric perde 1 DEF' },
-    duo: [{ name: 'Bigs', desc: '+1 ATK / +1 DEF' }],
+    counter: { name: 'Pirula', desc: 'mútuo — antes: Pirula nasce -1 ATK; depois: Eric perde 1 DEF', fx: ['mútuo', '−1 DEF'] },
+    duo: [{ name: 'Bigs', desc: '+1 ATK / +1 DEF', fx: ['+1 ATK', '+1 DEF'] }],
     special: { name: 'Vira o jogo', cost: 4, desc: 'Troca ATK e DEF de uma carta inimiga por 1 rodada.' },
   },
   {
@@ -89,8 +89,8 @@ export const CARDS = [
     accent: '#FF3D5A',
     bio: 'Glass cannon. Mata, cresce, explode.',
     passive: 'Matou uma carta inimiga? +1 ATK acumulável',
-    counter: { name: 'Eric', desc: 'mútuo — antes: Eric -1 DEF; depois: Pirula -1 ATK' },
-    duo: [{ name: 'Gustavo', desc: '+1 DEF, All in custa 4 ao invés de 5' }],
+    counter: { name: 'Eric', desc: 'mútuo — antes: Eric -1 DEF; depois: Pirula -1 ATK', fx: ['mútuo', '−1 ATK'] },
+    duo: [{ name: 'Gustavo', desc: '+1 DEF, All in custa 4 ao invés de 5', fx: ['+1 DEF', 'All in −1'] }],
     special: { name: 'All in', cost: 5, desc: 'Uma vez por partida. Aplica todo o ATK atual direto no jogador, ignorando defesa.' },
   },
   {
@@ -100,10 +100,10 @@ export const CARDS = [
     accent: '#5DD3B6',
     bio: 'Defesa pura. Sem dano = mais defesa.',
     passive: 'Cada rodada sem sofrer dano = +1 DEF',
-    counter: { name: 'Ian', desc: 'imune ao roubo, cancela a passiva do Ian' },
+    counter: { name: 'Ian', desc: 'imune ao roubo, cancela a passiva do Ian', fx: ['Imune roubo', 'Cancela passiva'] },
     duo: [
-      { name: 'Pirula', desc: '+1 ATK, passiva acumula 2x mais rápido' },
-      { name: 'Hadez', desc: 'mercado sobe pra 40%' },
+      { name: 'Pirula', desc: '+1 ATK, passiva acumula 2x mais rápido', fx: ['+1 ATK', 'Passiva 2x'] },
+      { name: 'Hadez', desc: 'mercado sobe pra 40%', fx: ['Mercado 40%'] },
     ],
     special: { name: 'Blindagem', cost: 3, desc: 'Por 1 rodada, uma carta aliada fica imune a counters.' },
   },
@@ -114,10 +114,44 @@ export const CARDS = [
     accent: '#54E0B0',
     bio: 'Suporte. Cura silenciosa.',
     passive: 'No início de cada rodada, uma carta aliada aleatória recupera 1 de vida',
-    counter: { name: 'Gbzin', desc: 'enquanto Rena tá no tabuleiro, passiva de ATK do Gbzin pausa' },
-    duo: [{ name: 'Hadez', desc: 'mercado 40%, cura vai pra carta com menos vida' }],
+    counter: { name: 'Gbzin', desc: 'enquanto Rena tá no tabuleiro, passiva de ATK do Gbzin pausa', fx: ['Pausa Gbzin'] },
+    duo: [{ name: 'Hadez', desc: 'mercado 40%, cura vai pra carta com menos vida', fx: ['Mercado 40%', 'Cura focada'] }],
     special: { name: 'Estouro de elixir', cost: 3, desc: 'Todas as cartas aliadas recuperam 1 vida e ganham +1 DEF por 1 rodada.' },
   },
 ]
 
 export const cardById = (id) => CARDS.find(c => c.id === id)
+
+// ── Relações para as auras visuais ──────────────────────────────
+// Counters direcionais (A vence B). Pares mútuos aparecem nos dois sentidos.
+const COUNTER_EDGES = [
+  ['bigs', 'gbzin'],
+  ['rena', 'gbzin'],
+  ['pepao', 'hadez'],
+  ['ian', 'hadez'],
+  ['gustavo', 'ian'],
+  ['eric', 'pirula'],   // mútuo
+  ['pirula', 'eric'],   // mútuo
+  ['davi', 'pepao'],    // mútuo (minigame)
+  ['pepao', 'davi'],    // mútuo (minigame)
+]
+
+export const COUNTERS = {}      // cardId -> [cartas que ele vence]   (verde)
+export const COUNTERED_BY = {}  // cardId -> [cartas que vencem ele]  (vermelho)
+export const DUO_PARTNERS = {}  // cardId -> [parceiros de duo]       (amarelo)
+
+for (const c of CARDS) { COUNTERS[c.id] = []; COUNTERED_BY[c.id] = []; DUO_PARTNERS[c.id] = [] }
+
+for (const [a, b] of COUNTER_EDGES) {
+  if (!COUNTERS[a].includes(b)) COUNTERS[a].push(b)
+  if (!COUNTERED_BY[b].includes(a)) COUNTERED_BY[b].push(a)
+}
+
+for (const c of CARDS) {
+  for (const d of (c.duo || [])) {
+    const partner = CARDS.find(x => x.name === d.name)
+    if (!partner) continue
+    if (!DUO_PARTNERS[c.id].includes(partner.id)) DUO_PARTNERS[c.id].push(partner.id)
+    if (!DUO_PARTNERS[partner.id].includes(c.id)) DUO_PARTNERS[partner.id].push(c.id) // simétrico
+  }
+}

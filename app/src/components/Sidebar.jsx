@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Home, LayoutGrid, Users, Swords, User, Trophy } from 'lucide-react'
+import { Home, LayoutGrid, Users, Swords, User, Trophy, GraduationCap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useSocket } from '../context/SocketContext'
 
-const ICONS = { Home, LayoutGrid, Users, Swords, User, Trophy }
+const ICONS = { Home, LayoutGrid, Users, Swords, User, Trophy, GraduationCap }
 
 const NAV_ITEMS = [
   { id: '/home',         label: 'Início',      icon: 'Home' },
+  { id: '/tutorial',     label: 'Tutorial',    icon: 'GraduationCap' },
   { id: '/roster',       label: 'Cartas',      icon: 'LayoutGrid' },
   { id: '/leaderboard',  label: 'Ranking',     icon: 'Trophy' },
   { id: '/friends',      label: 'Amigos',      icon: 'Users' },

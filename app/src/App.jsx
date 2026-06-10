@@ -12,6 +12,7 @@ import End from './pages/End'
 import Profile from './pages/Profile'
 import Cards from './pages/Cards'
 import Leaderboard from './pages/Leaderboard'
+import Tutorial from './pages/Tutorial'
 
 function PrivateRoute({ children }) {
   const { user } = useAuth()
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/end"        element={<PrivateRoute><End /></PrivateRoute>} />
           <Route path="/profile"     element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/leaderboard" element={<PrivateRoute><Leaderboard /></PrivateRoute>} />
+          <Route path="/tutorial"    element={<PrivateRoute><Tutorial /></PrivateRoute>} />
           <Route path="/cards"       element={<PrivateRoute><Cards /></PrivateRoute>} />
           <Route path="*"           element={<Navigate to="/home" replace />} />
         </Routes>
